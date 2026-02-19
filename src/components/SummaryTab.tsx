@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { SchoolData } from "@/types";
-import { CheckCircle, XCircle, Circle } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface Props {
   data: SchoolData;
@@ -17,7 +18,6 @@ export function SummaryTab({ data }: Props) {
     return data.students.filter((s) => s.turma === filterTurma);
   }, [data.students, filterTurma]);
 
-  // All unique dates from attendance records, filtered by date range
   const attendanceDates = useMemo(() => {
     let dates = Array.from(new Set(data.attendanceRecords.map((r) => r.date))).sort();
     if (filterDateFrom) dates = dates.filter((d) => d >= filterDateFrom);
@@ -25,7 +25,6 @@ export function SummaryTab({ data }: Props) {
     return dates;
   }, [data.attendanceRecords, filterDateFrom, filterDateTo]);
 
-  // Activities filtered by date range and turma
   const filteredActivities = useMemo(() => {
     let acts = data.activities;
     if (filterTurma !== "all") {
@@ -65,24 +64,59 @@ export function SummaryTab({ data }: Props) {
     return { present, total };
   };
 
-  const getActivitySummary = (studentId: string) => {
-    const studentActivities = filteredActivities.filter((a) => {
-      const student = data.students.find((s) => s.id === studentId);
-      const turma = data.turmas.find((t) => t.name === student?.turma);
-      return turma?.id === a.turmaId;
-    });
-    const done = studentActivities.filter((a) => {
-      const record = data.activityRecords.find(
-        (r) => r.studentId === studentId && r.activityId === a.id
-      );
-      return record?.done;
-    }).length;
-    return { done, total: studentActivities.length };
-  };
-
   const formatDate = (d: string) => {
     const [y, m, day] = d.split("-");
     return `${day}/${m}`;
+  };
+
+  // ---- Export Excel ----
+  const exportAttendanceExcel = () => {
+    const headers = ["Aluno", "Turma", "Presença", "Faltas", "% Presença", ...attendanceDates.map(formatDate)];
+    const rows = filteredStudents.map((student) => {
+      const { present, total } = getAttendanceSummary(student.id);
+      const pct = total > 0 ? Math.round((present / total) * 100) : "";
+      const dateColumns = attendanceDates.map((d) => {
+        const s = getAttendanceStatus(student.id, d);
+        return s === true ? "P" : s === false ? "F" : "";
+      });
+      return [student.name, student.turma, present, total - present, pct !== "" ? `${pct}%` : "", ...dateColumns];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chamada");
+    XLSX.writeFile(wb, "resumo_chamada.xlsx");
+  };
+
+  const exportActivitiesExcel = () => {
+    const headers = [
+      "Aluno", "Turma", "Entregues", "Pendentes", "% Entrega",
+      ...filteredActivities.map((a) => `${formatDate(a.date)} - ${a.name}`),
+    ];
+    const rows = filteredStudents.map((student) => {
+      const studentActivities = filteredActivities.filter((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        return turma?.id === a.turmaId;
+      });
+      const done = studentActivities.filter((a) => {
+        const r = data.activityRecords.find(
+          (r) => r.studentId === student.id && r.activityId === a.id
+        );
+        return r?.done;
+      }).length;
+      const total = studentActivities.length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : "";
+      const actColumns = filteredActivities.map((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        if (turma?.id !== a.turmaId) return "—";
+        const s = getActivityStatus(student.id, a.id);
+        return s === true ? "Feito" : s === false ? "Pendente" : "";
+      });
+      return [student.name, student.turma, done, total - done, pct !== "" ? `${pct}%` : "", ...actColumns];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Atividades");
+    XLSX.writeFile(wb, "resumo_atividades.xlsx");
   };
 
   return (
@@ -170,12 +204,19 @@ export function SummaryTab({ data }: Props) {
       {activeView === "attendance" && (
         <div className="section-card">
           <div className="section-card-header">
-            <span className="section-card-title">
-              Resumo de Chamada
-            </span>
-            <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-              {attendanceDates.length} aula(s) no período
-            </span>
+            <span className="section-card-title">Resumo de Chamada</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                {attendanceDates.length} aula(s) no período
+              </span>
+              <button
+                onClick={exportAttendanceExcel}
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
+              >
+                <Download size={12} /> Exportar Excel
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             {filteredStudents.length === 0 ? (
@@ -183,10 +224,10 @@ export function SummaryTab({ data }: Props) {
                 Nenhum aluno encontrado.
               </div>
             ) : (
-              <table className="school-table">
+              <table className="school-table" style={{ minWidth: "max-content" }}>
                 <thead>
                   <tr>
-                    <th>Aluno</th>
+                    <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
                     <th>Turma</th>
                     <th>Presença</th>
                     <th>Faltas</th>
@@ -202,7 +243,12 @@ export function SummaryTab({ data }: Props) {
                     const pct = total > 0 ? Math.round((present / total) * 100) : null;
                     return (
                       <tr key={student.id}>
-                        <td className="font-medium whitespace-nowrap">{student.name}</td>
+                        <td
+                          className="font-medium whitespace-nowrap sticky left-0 z-10"
+                          style={{ backgroundColor: "hsl(var(--card))" }}
+                        >
+                          {student.name}
+                        </td>
                         <td>
                           <span
                             className="rounded-full px-2 py-0.5 text-xs font-semibold"
@@ -257,12 +303,19 @@ export function SummaryTab({ data }: Props) {
       {activeView === "activities" && (
         <div className="section-card">
           <div className="section-card-header">
-            <span className="section-card-title">
-              Resumo de Atividades
-            </span>
-            <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-              {filteredActivities.length} atividade(s) no período
-            </span>
+            <span className="section-card-title">Resumo de Atividades</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                {filteredActivities.length} atividade(s) no período
+              </span>
+              <button
+                onClick={exportActivitiesExcel}
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
+              >
+                <Download size={12} /> Exportar Excel
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             {filteredStudents.length === 0 ? (
@@ -270,10 +323,10 @@ export function SummaryTab({ data }: Props) {
                 Nenhum aluno encontrado.
               </div>
             ) : (
-              <table className="school-table">
+              <table className="school-table" style={{ minWidth: "max-content" }}>
                 <thead>
                   <tr>
-                    <th>Aluno</th>
+                    <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
                     <th>Turma</th>
                     <th>Entregues</th>
                     <th>Pendentes</th>
@@ -303,7 +356,12 @@ export function SummaryTab({ data }: Props) {
 
                     return (
                       <tr key={student.id}>
-                        <td className="font-medium whitespace-nowrap">{student.name}</td>
+                        <td
+                          className="font-medium whitespace-nowrap sticky left-0 z-10"
+                          style={{ backgroundColor: "hsl(var(--card))" }}
+                        >
+                          {student.name}
+                        </td>
                         <td>
                           <span
                             className="rounded-full px-2 py-0.5 text-xs font-semibold"

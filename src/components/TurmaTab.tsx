@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { SchoolData, Turma, Activity } from "@/types";
-import { Plus, Trash2, CheckCircle, XCircle, Circle, CalendarPlus } from "lucide-react";
+import { Plus, Trash2, CheckCircle, XCircle, Circle, CalendarPlus, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface Props {
   turma: Turma;
@@ -72,6 +73,42 @@ export function TurmaTab({
 
   const uniqueDates = Object.keys(activitiesByDate).sort();
 
+  // ---- Export Excel: Chamada (all dates) ----
+  const exportChamadaExcel = () => {
+    const allDates = Array.from(new Set(data.attendanceRecords.map((r) => r.date))).sort();
+    const headers = ["Aluno", ...allDates.map(formatShort), "Total Presenças", "Total Faltas"];
+    const rows = turmaStudents.map((s) => {
+      const dateValues = allDates.map((d) => {
+        const status = getAttendance(s.id, d);
+        return status === true ? "P" : status === false ? "F" : "";
+      });
+      const presencas = dateValues.filter((v) => v === "P").length;
+      const faltas = dateValues.filter((v) => v === "F").length;
+      return [s.name, ...dateValues, presencas, faltas];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chamada");
+    XLSX.writeFile(wb, `chamada_${turma.name}.xlsx`);
+  };
+
+  // ---- Export Excel: Atividades (one sheet per date group) ----
+  const exportAtividadesExcel = (date: string) => {
+    const activities = activitiesByDate[date] ?? [];
+    const headers = ["Aluno", ...activities.map((a) => a.name)];
+    const rows = turmaStudents.map((s) => {
+      const vals = activities.map((a) => {
+        const done = getActivityRecord(s.id, a.id);
+        return done === true ? "Feito" : done === false ? "Pendente" : "";
+      });
+      return [s.name, ...vals];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Atividades");
+    XLSX.writeFile(wb, `atividades_${turma.name}_${formatShort(date).replace("/", "-")}.xlsx`);
+  };
+
   return (
     <div className="space-y-4 p-4">
       {/* Header info */}
@@ -141,6 +178,13 @@ export function TurmaTab({
           <div className="section-card">
             <div className="section-card-header">
               <span className="section-card-title">Lista de Presença — {formatDate(attendanceDate)}</span>
+              <button
+                onClick={exportChamadaExcel}
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
+              >
+                <Download size={12} /> Exportar Excel
+              </button>
             </div>
             <div className="overflow-x-auto">
               {turmaStudents.length === 0 ? (
@@ -148,11 +192,11 @@ export function TurmaTab({
                   Nenhum aluno nesta turma. Cadastre alunos na aba "Cadastro".
                 </div>
               ) : (
-                <table className="school-table">
+                <table className="school-table" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Nome do Aluno</th>
+                      <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>#</th>
+                      <th className="sticky left-8 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Nome do Aluno</th>
                       <th className="text-center">Status</th>
                       <th className="text-center">Ação</th>
                     </tr>
@@ -162,8 +206,18 @@ export function TurmaTab({
                       const status = getAttendance(student.id, attendanceDate);
                       return (
                         <tr key={student.id}>
-                          <td className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{idx + 1}</td>
-                          <td className="font-medium">{student.name}</td>
+                          <td
+                            className="text-xs sticky left-0 z-10"
+                            style={{ color: "hsl(var(--muted-foreground))", backgroundColor: "hsl(var(--card))" }}
+                          >
+                            {idx + 1}
+                          </td>
+                          <td
+                            className="font-medium whitespace-nowrap sticky left-8 z-10"
+                            style={{ backgroundColor: "hsl(var(--card))" }}
+                          >
+                            {student.name}
+                          </td>
                           <td className="text-center">
                             {status === true && <span className="badge-present"><CheckCircle size={12} /> Presente</span>}
                             {status === false && <span className="badge-absent"><XCircle size={12} /> Falta</span>}
@@ -244,13 +298,20 @@ export function TurmaTab({
                       ({activitiesByDate[date].length} atividade(s))
                     </span>
                   </span>
+                  <button
+                    onClick={() => exportAtividadesExcel(date)}
+                    className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                    style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
+                  >
+                    <Download size={12} /> Exportar Excel
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="school-table">
+                  <table className="school-table" style={{ minWidth: "max-content" }}>
                     <thead>
                       <tr>
-                        <th>#</th>
-                        <th>Aluno</th>
+                        <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>#</th>
+                        <th className="sticky left-8 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
                         {activitiesByDate[date].map((a) => (
                           <th key={a.id} className="text-center">
                             <div className="flex items-center justify-center gap-1">
@@ -277,8 +338,18 @@ export function TurmaTab({
                       ) : (
                         turmaStudents.map((student, idx) => (
                           <tr key={student.id}>
-                            <td className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{idx + 1}</td>
-                            <td className="font-medium">{student.name}</td>
+                            <td
+                              className="text-xs sticky left-0 z-10"
+                              style={{ color: "hsl(var(--muted-foreground))", backgroundColor: "hsl(var(--card))" }}
+                            >
+                              {idx + 1}
+                            </td>
+                            <td
+                              className="font-medium whitespace-nowrap sticky left-8 z-10"
+                              style={{ backgroundColor: "hsl(var(--card))" }}
+                            >
+                              {student.name}
+                            </td>
                             {activitiesByDate[date].map((a) => {
                               const done = getActivityRecord(student.id, a.id);
                               return (
