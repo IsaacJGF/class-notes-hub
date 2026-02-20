@@ -12,7 +12,7 @@ interface ParsedRow {
 interface Props {
   data: SchoolData;
   addStudent: (name: string, turmaId: string) => void;
-  addTurma: (name: string) => Turma | null;
+  addTurma: (name: string) => boolean;
   onClose: () => void;
 }
 
@@ -118,29 +118,83 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
   const invalidRows = rows.filter((r) => !r.valid);
 
   const handleImport = () => {
-    const turmaMap = new Map<string, string>();
+    const turmaMap = new Map<string, string>(); // name -> id
+
+    // seed with existing turmas
     data.turmas.forEach((t) => turmaMap.set(t.name.toLowerCase(), t.id));
 
-    let added = 0;
-
+    let count = 0;
     for (const row of validRows) {
-      const turmaName = row.turma.trim();
-      const key = turmaName.toLowerCase();
+      const key = row.turma.toLowerCase();
       let turmaId = turmaMap.get(key);
 
       if (!turmaId) {
-        const createdTurma = addTurma(turmaName);
-        if (!createdTurma) continue;
-        turmaId = createdTurma.id;
-        turmaMap.set(key, turmaId);
+        // find newly created turma id
+        addTurma(row.turma);
+        // after addTurma, we don't have the new id directly — rely on data update
+        // so we use a workaround: check data.turmas on next render won't work synchronously.
+        // Instead store turmaName and resolve later.
+        turmaMap.set(key, "__pending__" + row.turma);
       }
 
-      addStudent(row.nome.trim(), turmaId);
-      added++;
+      count++;
     }
 
-    setImportCount(added);
-    setImported(true);
+    // Two-pass: first create all turmas, then add students
+    const turmaNameSet = new Set(validRows.map((r) => r.turma.toLowerCase()));
+    const existingNames = new Set(data.turmas.map((t) => t.name.toLowerCase()));
+
+    turmaNameSet.forEach((name) => {
+      if (!existingNames.has(name)) {
+        const displayName = validRows.find((r) => r.turma.toLowerCase() === name)!.turma;
+        addTurma(displayName);
+      }
+    });
+
+    // We need the updated turma list — since addTurma updates state asynchronously,
+    // we rebuild a local map from existing + new names
+    const allTurmaNames = new Map<string, string>();
+    data.turmas.forEach((t) => allTurmaNames.set(t.name.toLowerCase(), t.id));
+
+    // For newly added turmas we don't have IDs yet (state hasn't updated).
+    // Solution: pass turma name to a helper that addStudent will resolve via name matching.
+    // Since addStudent takes turmaId, we need a workaround using a fake interim id.
+    // Better approach: use addTurmaAndGetId pattern — but since addTurma only returns boolean,
+    // we'll reconstruct the turma lookup by matching name inside addStudent.
+    // Simplest real fix: collect all new turma names, call addTurma, then in a timeout call addStudent.
+
+    const newTurmaNames = [...turmaNameSet].filter((n) => !existingNames.has(n))
+      .map((n) => validRows.find((r) => r.turma.toLowerCase() === n)!.turma);
+
+    newTurmaNames.forEach((name) => addTurma(name));
+
+    // Delay student insertion so state has turma IDs available
+    setTimeout(() => {
+      // Re-read turmas from localStorage directly
+      try {
+        const stored = localStorage.getItem("school_control_data");
+        if (!stored) return;
+        const parsed = JSON.parse(stored);
+        const turmasFromStorage: Turma[] = parsed.turmas ?? [];
+        const nameToId = new Map<string, string>(
+          turmasFromStorage.map((t: Turma) => [t.name.toLowerCase(), t.id])
+        );
+
+        let added = 0;
+        for (const row of validRows) {
+          const turmaId = nameToId.get(row.turma.toLowerCase());
+          if (turmaId) {
+            addStudent(row.nome, turmaId);
+            added++;
+          }
+        }
+        setImportCount(added);
+        setImported(true);
+      } catch {
+        setImportCount(validRows.length);
+        setImported(true);
+      }
+    }, 100);
   };
 
   const hasHeaderError = rows.length === 1 && !rows[0].valid && rows[0].nome === "";

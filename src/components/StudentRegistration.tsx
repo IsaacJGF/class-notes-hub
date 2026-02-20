@@ -7,7 +7,7 @@ interface Props {
   data: SchoolData;
   addStudent: (name: string, turmaId: string) => void;
   removeStudent: (id: string) => void;
-  addTurma: (name: string) => Turma | null;
+  addTurma: (name: string) => boolean;
   removeTurma: (id: string) => void;
 }
 
