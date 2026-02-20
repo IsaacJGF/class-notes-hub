@@ -30,20 +30,16 @@ export function useSchoolData() {
 
   // --- Students ---
   const addStudent = useCallback((name: string, turmaId: string) => {
-    setData((prev) => {
-      const turma = prev.turmas.find((t) => t.id === turmaId);
-      if (!turma) return prev;
-
-      const student: Student = {
-        id: generateId(),
-        name: name.trim(),
-        turma: turma.name,
-        createdAt: new Date().toISOString(),
-      };
-
-      return { ...prev, students: [...prev.students, student] };
-    });
-  }, []);
+    const turma = data.turmas.find((t) => t.id === turmaId);
+    if (!turma) return;
+    const student: Student = {
+      id: generateId(),
+      name: name.trim(),
+      turma: turma.name,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => ({ ...prev, students: [...prev.students, student] }));
+  }, [data.turmas]);
 
   const removeStudent = useCallback((id: string) => {
     setData((prev) => ({
@@ -56,20 +52,11 @@ export function useSchoolData() {
 
   // --- Turmas ---
   const addTurma = useCallback((name: string) => {
-    const trimmedName = name.trim();
-    if (!trimmedName) return null;
-
-    const exists = data.turmas.some((t) => t.name.toLowerCase() === trimmedName.toLowerCase());
-    if (exists) return null;
-
-    const turma: Turma = { id: generateId(), name: trimmedName };
-    setData((prev) => {
-      if (prev.turmas.some((t) => t.name.toLowerCase() === trimmedName.toLowerCase())) {
-        return prev;
-      }
-      return { ...prev, turmas: [...prev.turmas, turma] };
-    });
-    return turma;
+    const exists = data.turmas.some((t) => t.name.toLowerCase() === name.trim().toLowerCase());
+    if (exists) return false;
+    const turma: Turma = { id: generateId(), name: name.trim() };
+    setData((prev) => ({ ...prev, turmas: [...prev.turmas, turma] }));
+    return true;
   }, [data.turmas]);
 
   const removeTurma = useCallback((id: string) => {
