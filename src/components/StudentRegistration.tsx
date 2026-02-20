@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SchoolData, Turma } from "@/types";
-import { UserPlus, Trash2, GraduationCap, BookOpen } from "lucide-react";
+import { UserPlus, Trash2, GraduationCap, BookOpen, Upload } from "lucide-react";
+import { CsvImportModal } from "@/components/CsvImportModal";
 
 interface Props {
   data: SchoolData;
@@ -16,6 +17,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
   const [newTurmaName, setNewTurmaName] = useState("");
   const [turmaError, setTurmaError] = useState("");
   const [filterTurma, setFilterTurma] = useState("all");
+  const [showCsvModal, setShowCsvModal] = useState(false);
 
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +46,14 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
 
   return (
     <div className="space-y-6 p-4">
+      {showCsvModal && (
+        <CsvImportModal
+          data={data}
+          addStudent={addStudent}
+          addTurma={addTurma}
+          onClose={() => setShowCsvModal(false)}
+        />
+      )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Add Turma */}
         <div className="section-card">
@@ -152,16 +162,30 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
           <span className="section-card-title">
             Alunos Cadastrados ({filtered.length})
           </span>
-          <select
-            className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            value={filterTurma}
-            onChange={(e) => setFilterTurma(e.target.value)}
-          >
-            <option value="all">Todas as turmas</option>
-            {data.turmas.map((t) => (
-              <option key={t.id} value={t.name}>{t.name}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCsvModal(true)}
+              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+              style={{
+                borderColor: "hsl(var(--primary))",
+                color: "hsl(var(--primary))",
+                backgroundColor: "hsl(var(--primary) / 0.08)",
+              }}
+            >
+              <Upload size={12} />
+              Importar CSV
+            </button>
+            <select
+              className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              value={filterTurma}
+              onChange={(e) => setFilterTurma(e.target.value)}
+            >
+              <option value="all">Todas as turmas</option>
+              {data.turmas.map((t) => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           {filtered.length === 0 ? (
