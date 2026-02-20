@@ -2,6 +2,7 @@
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "0.0.0",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --test src/test/example.test.mjs",
-    "test:watch": "node --test --watch src/test/example.test.mjs"
+    "test:watch": "node --test --watch src/test/example.test.mjs",
+    "dist": "npm run build && electron-builder"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
