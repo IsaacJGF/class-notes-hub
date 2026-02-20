@@ -30,6 +30,7 @@ export interface ActivityRecord {
   studentId: string;
   activityId: string;
   done: boolean;
+  bonusTag?: "yellow" | "green" | null;
 }
 
 export interface SchoolData {
