@@ -1,7 +1,18 @@
 import { useState, useMemo } from "react";
 import { SchoolData } from "@/types";
-import { CheckCircle, XCircle, Circle, Download } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 
 interface Props {
   data: SchoolData;
@@ -12,6 +23,7 @@ export function SummaryTab({ data }: Props) {
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities">("attendance");
+  const [showCharts, setShowCharts] = useState(true);
 
   const filteredStudents = useMemo(() => {
     if (filterTurma === "all") return data.students;
@@ -68,6 +80,57 @@ export function SummaryTab({ data }: Props) {
     const [y, m, day] = d.split("-");
     return `${day}/${m}`;
   };
+
+  // ---- Chart data ----
+  const chartByTurma = useMemo(() => {
+    return data.turmas.map((turma) => {
+      const turmaStudents = filteredStudents.filter((s) => s.turma === turma.name);
+      if (turmaStudents.length === 0) return null;
+
+      // Attendance
+      const totalAttDates = attendanceDates.length;
+      const presentSum = turmaStudents.reduce((acc, s) => {
+        const { present } = getAttendanceSummary(s.id);
+        return acc + present;
+      }, 0);
+      const attPct = totalAttDates > 0
+        ? Math.round((presentSum / (turmaStudents.length * totalAttDates)) * 100)
+        : 0;
+
+      // Activities
+      const turmaActivities = filteredActivities.filter((a) => a.turmaId === turma.id);
+      const totalActSlots = turmaStudents.length * turmaActivities.length;
+      const doneSum = turmaStudents.reduce((acc, s) => {
+        const done = turmaActivities.filter((a) => {
+          const r = data.activityRecords.find((r) => r.studentId === s.id && r.activityId === a.id);
+          return r?.done;
+        }).length;
+        return acc + done;
+      }, 0);
+      const actPct = totalActSlots > 0 ? Math.round((doneSum / totalActSlots) * 100) : 0;
+
+      return { turma: turma.name, Presença: attPct, Atividades: actPct };
+    }).filter(Boolean);
+  }, [data.turmas, filteredStudents, attendanceDates, filteredActivities, data.activityRecords]);
+
+  const chartByStudent = useMemo(() => {
+    return filteredStudents.map((student) => {
+      const { present, total: totalDates } = getAttendanceSummary(student.id);
+      const attPct = totalDates > 0 ? Math.round((present / totalDates) * 100) : 0;
+
+      const studentActivities = filteredActivities.filter((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        return turma?.id === a.turmaId;
+      });
+      const done = studentActivities.filter((a) => {
+        const r = data.activityRecords.find((r) => r.studentId === student.id && r.activityId === a.id);
+        return r?.done;
+      }).length;
+      const actPct = studentActivities.length > 0 ? Math.round((done / studentActivities.length) * 100) : 0;
+
+      return { aluno: student.name.split(" ")[0], Presença: attPct, Atividades: actPct };
+    });
+  }, [filteredStudents, filteredActivities, data.turmas, data.activityRecords]);
 
   // ---- Export Excel ----
   const exportAttendanceExcel = () => {
@@ -172,6 +235,85 @@ export function SummaryTab({ data }: Props) {
             Limpar filtros
           </button>
         </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="section-card">
+        <div className="section-card-header">
+          <span className="section-card-title flex items-center gap-2">
+            <BarChart2 size={16} /> Gráficos de Desempenho
+          </span>
+          <button
+            onClick={() => setShowCharts((v) => !v)}
+            className="rounded px-3 py-1 text-xs font-semibold transition-colors"
+            style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
+          >
+            {showCharts ? "Ocultar" : "Mostrar"}
+          </button>
+        </div>
+        {showCharts && (
+          <div className="p-4 grid grid-cols-1 gap-8 lg:grid-cols-2">
+
+            {/* Chart by Turma */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>
+                Desempenho por Turma (%)
+              </h3>
+              {chartByTurma.length === 0 ? (
+                <div className="flex h-40 items-center justify-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  Sem dados para exibir.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartByTurma} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="turma" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip
+                      formatter={(v: number) => `${v}%`}
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Presença" fill="hsl(var(--present))" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="Atividades" fill="hsl(var(--done))" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Chart by Student */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>
+                Desempenho por Aluno (%)
+              </h3>
+              {chartByStudent.length === 0 ? (
+                <div className="flex h-40 items-center justify-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  Sem dados para exibir.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div style={{ minWidth: Math.max(chartByStudent.length * 80, 300) }}>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={chartByStudent} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="aluno" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                        <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                        <Tooltip
+                          formatter={(v: number) => `${v}%`}
+                          contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar dataKey="Presença" fill="hsl(var(--present))" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                        <Bar dataKey="Atividades" fill="hsl(var(--done))" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
       </div>
 
       {/* Toggle View */}
