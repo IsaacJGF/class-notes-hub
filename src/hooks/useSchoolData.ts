@@ -161,7 +161,40 @@ export function useSchoolData() {
         studentId,
         activityId,
         done: true,
+        bonusTag: null,
       };
+      return {
+        ...prev,
+        activityRecords: [...prev.activityRecords, newRecord],
+      };
+    });
+  }, []);
+
+  const cycleActivityBonusTag = useCallback((studentId: string, activityId: string) => {
+    setData((prev) => {
+      const existing = prev.activityRecords.find(
+        (r) => r.studentId === studentId && r.activityId === activityId
+      );
+
+      if (existing) {
+        const nextBonusTag =
+          existing.bonusTag === "yellow" ? "green" : existing.bonusTag === "green" ? null : "yellow";
+        return {
+          ...prev,
+          activityRecords: prev.activityRecords.map((r) =>
+            r.id === existing.id ? { ...r, bonusTag: nextBonusTag } : r
+          ),
+        };
+      }
+
+      const newRecord: ActivityRecord = {
+        id: generateId(),
+        studentId,
+        activityId,
+        done: false,
+        bonusTag: "yellow",
+      };
+
       return {
         ...prev,
         activityRecords: [...prev.activityRecords, newRecord],
@@ -180,6 +213,16 @@ export function useSchoolData() {
     [data.activityRecords]
   );
 
+  const getActivityBonusTag = useCallback(
+    (studentId: string, activityId: string): "yellow" | "green" | null => {
+      const record = data.activityRecords.find(
+        (r) => r.studentId === studentId && r.activityId === activityId
+      );
+      return record?.bonusTag ?? null;
+    },
+    [data.activityRecords]
+  );
+
   return {
     data,
     addStudent,
@@ -192,5 +235,7 @@ export function useSchoolData() {
     getAttendance,
     toggleActivityRecord,
     getActivityRecord,
+    cycleActivityBonusTag,
+    getActivityBonusTag,
   };
 }

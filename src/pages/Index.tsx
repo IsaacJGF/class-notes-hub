@@ -98,6 +98,8 @@ const Index = () => {
             getAttendance={school.getAttendance}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecord={school.getActivityRecord}
+            cycleActivityBonusTag={school.cycleActivityBonusTag}
+            getActivityBonusTag={school.getActivityBonusTag}
           />
         )}
       </main>
