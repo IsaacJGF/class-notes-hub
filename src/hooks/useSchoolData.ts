@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { SchoolData, Student, Turma, Activity, AttendanceRecord, ActivityRecord } from "@/types";
+import { SchoolData, Student, Turma, Activity, AttendanceRecord, ActivityRecord, MinTask, MinTaskRecord } from "@/types";
 
 const STORAGE_KEY = "school_control_data";
 
@@ -9,6 +9,8 @@ const defaultData: SchoolData = {
   activities: [],
   attendanceRecords: [],
   activityRecords: [],
+  minTasks: [],
+  minTaskRecords: [],
 };
 
 function generateId(): string {
@@ -223,6 +225,61 @@ export function useSchoolData() {
     [data.activityRecords]
   );
 
+  // --- Min Tasks ---
+  const addMinTask = useCallback((turmaId: string, name: string, date: string, totalQuestions: number) => {
+    const minTask: MinTask = {
+      id: generateId(),
+      turmaId,
+      name: name.trim(),
+      date,
+      totalQuestions,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => ({ ...prev, minTasks: [...prev.minTasks, minTask] }));
+    return minTask;
+  }, []);
+
+  const removeMinTask = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      minTasks: prev.minTasks.filter((t) => t.id !== id),
+      minTaskRecords: prev.minTaskRecords.filter((r) => r.minTaskId !== id),
+    }));
+  }, []);
+
+  const setMinTaskRecord = useCallback((studentId: string, minTaskId: string, questionsDone: number) => {
+    setData((prev) => {
+      const existing = prev.minTaskRecords.find(
+        (r) => r.studentId === studentId && r.minTaskId === minTaskId
+      );
+      if (existing) {
+        return {
+          ...prev,
+          minTaskRecords: prev.minTaskRecords.map((r) =>
+            r.id === existing.id ? { ...r, questionsDone } : r
+          ),
+        };
+      }
+      const newRecord: MinTaskRecord = {
+        id: generateId(),
+        studentId,
+        minTaskId,
+        questionsDone,
+      };
+      return { ...prev, minTaskRecords: [...prev.minTaskRecords, newRecord] };
+    });
+  }, []);
+
+  const getMinTaskRecord = useCallback(
+    (studentId: string, minTaskId: string): number => {
+      const record = data.minTaskRecords.find(
+        (r) => r.studentId === studentId && r.minTaskId === minTaskId
+      );
+      return record?.questionsDone ?? 0;
+    },
+    [data.minTaskRecords]
+  );
+
   return {
     data,
     addStudent,
@@ -237,5 +294,9 @@ export function useSchoolData() {
     getActivityRecord,
     cycleActivityBonusTag,
     getActivityBonusTag,
+    addMinTask,
+    removeMinTask,
+    setMinTaskRecord,
+    getMinTaskRecord,
   };
 }

@@ -15,7 +15,7 @@ export function SummaryTab({ data }: Props) {
   const [filterTurma, setFilterTurma] = useState("all");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
-  const [activeView, setActiveView] = useState<"attendance" | "activities">("attendance");
+  const [activeView, setActiveView] = useState<"attendance" | "activities" | "mintasks">("attendance");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -268,7 +268,7 @@ export function SummaryTab({ data }: Props) {
         <>
           {/* Toggle View */}
           <div className="flex gap-2">
-            <button
+             <button
               onClick={() => setActiveView("attendance")}
               className="rounded px-4 py-2 text-sm font-semibold transition-colors"
               style={
@@ -289,6 +289,17 @@ export function SummaryTab({ data }: Props) {
               }
             >
               Atividades
+            </button>
+            <button
+              onClick={() => setActiveView("mintasks")}
+              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+              style={
+                activeView === "mintasks"
+                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+              }
+            >
+              Tarefa Mínima
             </button>
           </div>
 
@@ -504,6 +515,99 @@ export function SummaryTab({ data }: Props) {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Min Tasks Summary Table */}
+          {activeView === "mintasks" && (
+            <div className="section-card">
+              <div className="section-card-header">
+                <span className="section-card-title">Resumo de Tarefa Mínima</span>
+                <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  {(data.minTasks || []).length} tarefa(s) mínima(s) no total
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                {filteredStudents.length === 0 ? (
+                  <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    Nenhum aluno encontrado.
+                  </div>
+                ) : (() => {
+                  const studentMinTasks = (studentTurmaName: string) => {
+                    const turma = data.turmas.find((t) => t.name === studentTurmaName);
+                    if (!turma) return [];
+                    let tasks = (data.minTasks || []).filter((t) => t.turmaId === turma.id);
+                    if (filterDateFrom) tasks = tasks.filter((t) => t.date >= filterDateFrom);
+                    if (filterDateTo) tasks = tasks.filter((t) => t.date <= filterDateTo);
+                    return tasks;
+                  };
+
+                  const getRecord = (studentId: string, minTaskId: string) => {
+                    const r = (data.minTaskRecords || []).find(
+                      (r) => r.studentId === studentId && r.minTaskId === minTaskId
+                    );
+                    return r?.questionsDone ?? 0;
+                  };
+
+                  return (
+                    <table className="school-table" style={{ minWidth: "max-content" }}>
+                      <thead>
+                        <tr>
+                          <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
+                          <th>Turma</th>
+                          <th className="text-center">Total Feitas</th>
+                          <th className="text-center">Total Possível</th>
+                          <th className="text-center">% Aproveitamento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.map((student) => {
+                          const tasks = studentMinTasks(student.turma);
+                          const totalDone = tasks.reduce((sum, t) => sum + getRecord(student.id, t.id), 0);
+                          const totalPossible = tasks.reduce((sum, t) => sum + t.totalQuestions, 0);
+                          const pct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : null;
+                          return (
+                            <tr key={student.id}>
+                              <td
+                                className="font-medium whitespace-nowrap sticky left-0 z-10"
+                                style={{ backgroundColor: "hsl(var(--card))" }}
+                              >
+                                {student.name}
+                              </td>
+                              <td>
+                                <span
+                                  className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                                  style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
+                                >
+                                  {student.turma}
+                                </span>
+                              </td>
+                              <td className="text-center font-semibold">{totalDone}</td>
+                              <td className="text-center" style={{ color: "hsl(var(--muted-foreground))" }}>{totalPossible}</td>
+                              <td className="text-center">
+                                {pct !== null ? (
+                                  <span
+                                    className="rounded px-2 py-0.5 text-xs font-bold"
+                                    style={
+                                      pct >= 75
+                                        ? { backgroundColor: "hsl(var(--done-light, 142 76% 94%))", color: "hsl(var(--done, 142 76% 36%))" }
+                                        : { backgroundColor: "hsl(var(--not-done-light, 0 84% 94%))", color: "hsl(var(--not-done, 0 84% 60%))" }
+                                    }
+                                  >
+                                    {pct}%
+                                  </span>
+                                ) : (
+                                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  );
+                })()}
               </div>
             </div>
           )}
