@@ -124,6 +124,14 @@ All colors MUST be HSL.
     @apply px-3 py-2;
   }
 
+  .school-table.school-table-compact thead th {
+    @apply px-2 py-2;
+  }
+
+  .school-table.school-table-compact tbody td {
+    @apply px-2 py-1.5;
+  }
+
   /* Status badges */
   .badge-present {
     background-color: hsl(var(--present-light));
