@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData, Turma, Activity, MinTask } from "@/types";
 import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
+import { matchesAccentAware } from "@/lib/textSearch";
 
 type SubTab = "diario" | "tarefa-minima";
 
@@ -53,12 +54,21 @@ export function TurmaTab({
   const [newMinTaskDate, setNewMinTaskDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [newMinTaskTotal, setNewMinTaskTotal] = useState(20);
 
+  const focusAndSelectSearchInput = () => {
+    setTimeout(() => {
+      const input = searchInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 50);
+  };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setShowSearch(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
+        focusAndSelectSearchInput();
       }
       if (e.key === "Escape" && showSearch) {
         setShowSearch(false);
@@ -76,8 +86,7 @@ export function TurmaTab({
 
   const turmaStudents = useMemo(() => {
     if (!searchQuery.trim()) return allTurmaStudents;
-    const q = searchQuery.toLowerCase();
-    return allTurmaStudents.filter((s) => s.name.toLowerCase().includes(q));
+    return allTurmaStudents.filter((s) => matchesAccentAware(s.name, searchQuery));
   }, [allTurmaStudents, searchQuery]);
 
   const studentNameColWidth = useMemo(() => {
@@ -215,7 +224,7 @@ export function TurmaTab({
             </div>
           ) : (
             <button
-              onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+              onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
               className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
               style={{ color: "hsl(var(--muted-foreground))" }}
               title="Pesquisar (Ctrl+F)"
