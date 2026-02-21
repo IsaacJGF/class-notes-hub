@@ -148,6 +148,16 @@ All colors MUST be HSL.
     @apply px-2 py-1.5;
   }
 
+
+  .school-table.table-fit-content {
+    width: max-content;
+  }
+
+  .school-table.center-non-student-cols thead th:not(:first-child),
+  .school-table.center-non-student-cols tbody td:not(:first-child) {
+    text-align: center;
+  }
+
   /* Status badges */
   .badge-present {
     background-color: hsl(var(--present-light));

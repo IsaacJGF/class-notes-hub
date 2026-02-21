@@ -427,7 +427,7 @@ export function SummaryTab({ data }: Props) {
                     Nenhum aluno encontrado.
                   </div>
                 ) : (
-                  <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                  <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                     <thead>
                       <tr>
                         <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>
@@ -532,7 +532,7 @@ export function SummaryTab({ data }: Props) {
                     Nenhum aluno encontrado.
                   </div>
                 ) : (
-                  <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                  <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                     <thead>
                       <tr>
                         <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>
@@ -657,7 +657,7 @@ export function SummaryTab({ data }: Props) {
                   };
 
                   return (
-                    <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                    <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                       <thead>
                         <tr>
                           <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>

@@ -330,7 +330,7 @@ export function TurmaTab({
                   Nenhum aluno nesta turma. Cadastre alunos na aba "Cadastro".
                 </div>
               ) : (
-                <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
                       <th
@@ -507,7 +507,7 @@ export function TurmaTab({
                   Nenhuma tarefa mínima cadastrada. Adicione uma acima.
                 </div>
               ) : (
-                <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
                       <th
