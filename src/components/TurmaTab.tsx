@@ -297,7 +297,7 @@ export function TurmaTab({
             <div className="section-card-header">
               <span className="section-card-title">Planilha da Turma — {formatDate(attendanceDate)}</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[70vh]">
               {turmaStudents.length === 0 ? (
                 <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
                   Nenhum aluno nesta turma. Cadastre alunos na aba "Cadastro".
@@ -470,7 +470,7 @@ export function TurmaTab({
                 {turmaMinTasks.length} tarefa(s) mínima(s)
               </span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[70vh]">
               {turmaStudents.length === 0 ? (
                 <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
                   Nenhum aluno nesta turma.
