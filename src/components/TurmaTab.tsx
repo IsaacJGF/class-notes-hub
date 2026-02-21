@@ -80,6 +80,12 @@ export function TurmaTab({
     return allTurmaStudents.filter((s) => s.name.toLowerCase().includes(q));
   }, [allTurmaStudents, searchQuery]);
 
+  const studentNameColWidth = useMemo(() => {
+    const longestName = turmaStudents.reduce((max, student) => Math.max(max, student.name.length), 0);
+    const widthInCh = Math.max(16, Math.min(34, longestName + 2));
+    return `${widthInCh}ch`;
+  }, [turmaStudents]);
+
   const turmaActivities = useMemo(
     () => data.activities.filter((a) => a.turmaId === turma.id).sort((a, b) => a.date.localeCompare(b.date)),
     [data.activities, turma.id]
@@ -297,16 +303,20 @@ export function TurmaTab({
                   Nenhum aluno nesta turma. Cadastre alunos na aba "Cadastro".
                 </div>
               ) : (
-                <table className="school-table" style={{ minWidth: "max-content" }}>
+                <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>#</th>
-                      <th className="sticky left-8 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
-                      <th className="text-center">Chamada</th>
-                      <th className="text-center">Participação</th>
-                      <th className="text-center">Ponto Extra</th>
+                      <th
+                        className="sticky left-0 top-0 z-30"
+                        style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                      >
+                        Aluno
+                      </th>
+                      <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Chamada</th>
+                      <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Participação</th>
+                      <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Ponto Extra</th>
                       {dailyActivities.map((a) => (
-                        <th key={a.id} className="text-center">
+                        <th key={a.id} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
                           <div className="flex items-center justify-center gap-1">
                             {a.name}
                             <button
@@ -322,19 +332,13 @@ export function TurmaTab({
                     </tr>
                   </thead>
                   <tbody>
-                    {turmaStudents.map((student, idx) => {
+                    {turmaStudents.map((student) => {
                       const attendanceStatus = getAttendance(student.id, attendanceDate);
                       return (
                         <tr key={student.id}>
                           <td
-                            className="text-xs sticky left-0 z-10"
-                            style={{ color: "hsl(var(--muted-foreground))", backgroundColor: "hsl(var(--card))" }}
-                          >
-                            {idx + 1}
-                          </td>
-                          <td
-                            className="font-medium whitespace-nowrap sticky left-8 z-10"
-                            style={{ backgroundColor: "hsl(var(--card))" }}
+                            className="font-medium whitespace-nowrap sticky left-0 z-10"
+                            style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                           >
                             {student.name}
                           </td>
@@ -476,13 +480,17 @@ export function TurmaTab({
                   Nenhuma tarefa mínima cadastrada. Adicione uma acima.
                 </div>
               ) : (
-                <table className="school-table" style={{ minWidth: "max-content" }}>
+                <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>#</th>
-                      <th className="sticky left-8 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
+                      <th
+                        className="sticky left-0 top-0 z-30"
+                        style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                      >
+                        Aluno
+                      </th>
                       {turmaMinTasks.map((t) => (
-                        <th key={t.id} className="text-center min-w-24">
+                        <th key={t.id} className="sticky top-0 z-20 text-center min-w-24" style={{ backgroundColor: "hsl(var(--table-header))" }}>
                           <div className="flex flex-col items-center gap-0.5">
                             <div className="flex items-center gap-1">
                               <span>{t.name}</span>
@@ -498,27 +506,21 @@ export function TurmaTab({
                           </div>
                         </th>
                       ))}
-                      <th className="text-center">Total Feitas</th>
-                      <th className="text-center">Total Possível</th>
-                      <th className="text-center">%</th>
+                      <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Feitas</th>
+                      <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Possível</th>
+                      <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>%</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {turmaStudents.map((student, idx) => {
+                    {turmaStudents.map((student) => {
                       const totalDone = turmaMinTasks.reduce((sum, t) => sum + getMinTaskRecord(student.id, t.id), 0);
                       const totalPossible = turmaMinTasks.reduce((sum, t) => sum + t.totalQuestions, 0);
                       const pct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : null;
                       return (
                         <tr key={student.id}>
                           <td
-                            className="text-xs sticky left-0 z-10"
-                            style={{ color: "hsl(var(--muted-foreground))", backgroundColor: "hsl(var(--card))" }}
-                          >
-                            {idx + 1}
-                          </td>
-                          <td
-                            className="font-medium whitespace-nowrap sticky left-8 z-10"
-                            style={{ backgroundColor: "hsl(var(--card))" }}
+                            className="font-medium whitespace-nowrap sticky left-0 z-10"
+                            style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                           >
                             {student.name}
                           </td>
