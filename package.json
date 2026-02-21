@@ -2,17 +2,41 @@
   "name": "diario-do-professor",
   "private": true,
   "version": "0.0.0",
-  "main": "electron/main.cjs",
+  "description": "Diário do Professor (offline, dados locais) - app desktop Windows via Electron + Vite",
+  "author": "Isaac",
+  "license": "UNLICENSED",
   "type": "module",
+  "main": "electron/main.cjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "vite build --base=./",
+    "build:dev": "vite build --mode development --base=./",
+    "preview": "vite preview --host 127.0.0.1 --port 5173",
     "lint": "eslint .",
-    "preview": "vite preview",
     "test": "node --test src/test/example.test.mjs",
     "test:watch": "node --test --watch src/test/example.test.mjs",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.isaac.diariodoprofessor",
+    "productName": "Diário do Professor",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -74,6 +98,8 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "electron": "^40.6.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -86,6 +112,5 @@
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
     "vitest": "^3.2.4"
-  },
-  "productName": "Diário do Professor"
+  }
 }
