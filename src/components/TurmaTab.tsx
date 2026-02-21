@@ -148,6 +148,33 @@ export function TurmaTab({
     });
 
     const ws = XLSX.utils.aoa_to_sheet([[`Turma ${turma.name} - ${formatDate(attendanceDate)}`], [], headers, ...rows]);
+
+    const allRows = [[`Turma ${turma.name} - ${formatDate(attendanceDate)}`], [], headers, ...rows];
+    const columnCount = headers.length;
+    const columnWidths = headers.map((header, colIdx) => {
+      const longestCell = allRows.reduce((maxLength, row) => {
+        const cellValue = row[colIdx];
+        const cellText = cellValue == null ? "" : String(cellValue);
+        return Math.max(maxLength, cellText.length);
+      }, String(header).length);
+
+      return { wch: Math.max(10, Math.min(40, longestCell + 2)) };
+    });
+
+    ws["!cols"] = columnWidths;
+
+    for (let rowIdx = 0; rowIdx < allRows.length; rowIdx += 1) {
+      for (let colIdx = 1; colIdx < columnCount; colIdx += 1) {
+        const address = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+        const cell = ws[address];
+        if (!cell) continue;
+        cell.s = {
+          ...(cell.s || {}),
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+      }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turma");
     XLSX.writeFile(wb, `turma_${turma.name}_${formatShort(attendanceDate).replace("/", "-")}.xlsx`);
@@ -303,7 +330,7 @@ export function TurmaTab({
                   Nenhum aluno nesta turma. Cadastre alunos na aba "Cadastro".
                 </div>
               ) : (
-                <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
                       <th
@@ -480,7 +507,7 @@ export function TurmaTab({
                   Nenhuma tarefa mínima cadastrada. Adicione uma acima.
                 </div>
               ) : (
-                <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
+                <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
                   <thead>
                     <tr>
                       <th
