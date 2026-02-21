@@ -47,6 +47,12 @@ export function SummaryTab({ data }: Props) {
     return allFilteredStudents.filter((s) => s.name.toLowerCase().includes(q));
   }, [allFilteredStudents, searchQuery]);
 
+  const studentNameColWidth = useMemo(() => {
+    const longestName = filteredStudents.reduce((max, student) => Math.max(max, student.name.length), 0);
+    const widthInCh = Math.max(16, Math.min(34, longestName + 2));
+    return `${widthInCh}ch`;
+  }, [filteredStudents]);
+
   const attendanceDates = useMemo(() => {
     let dates = Array.from(new Set(data.attendanceRecords.map((r) => r.date))).sort();
     if (filterDateFrom) dates = dates.filter((d) => d >= filterDateFrom);
@@ -376,25 +382,25 @@ export function SummaryTab({ data }: Props) {
                   </button>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[70vh]">
                 {filteredStudents.length === 0 ? (
                   <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
                     Nenhum aluno encontrado.
                   </div>
                 ) : (
-                  <table className="school-table" style={{ minWidth: "max-content" }}>
+                  <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
                     <thead>
                       <tr>
-                        <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
-                        <th>Turma</th>
-                        <th>Presença</th>
-                        <th>Faltas</th>
-                        <th>% Presença</th>
-                        <th>Participações</th>
-                        <th>Part./Aulas</th>
-                        <th>Pontos Extra</th>
+                        <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Turma</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Presença</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Faltas</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Presença</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Participações</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Part./Aulas</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos Extra</th>
                         {attendanceDates.map((d) => (
-                          <th key={d} className="text-center">{formatDate(d)}</th>
+                          <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>{formatDate(d)}</th>
                         ))}
                       </tr>
                     </thead>
@@ -406,7 +412,7 @@ export function SummaryTab({ data }: Props) {
                           <tr key={student.id}>
                             <td
                               className="font-medium whitespace-nowrap sticky left-0 z-10"
-                              style={{ backgroundColor: "hsl(var(--card))" }}
+                              style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                             >
                               {student.name}
                             </td>
@@ -481,22 +487,22 @@ export function SummaryTab({ data }: Props) {
                   </button>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[70vh]">
                 {filteredStudents.length === 0 ? (
                   <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
                     Nenhum aluno encontrado.
                   </div>
                 ) : (
-                  <table className="school-table" style={{ minWidth: "max-content" }}>
+                  <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
                     <thead>
                       <tr>
-                        <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
-                        <th>Turma</th>
-                        <th>Entregues</th>
-                        <th>Pendentes</th>
-                        <th>% Entrega</th>
+                        <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Turma</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Entregues</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pendentes</th>
+                        <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
                         {filteredActivities.map((a) => (
-                          <th key={a.id} className="text-center min-w-16">
+                          <th key={a.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
                             <div>{formatDate(a.date)}</div>
                             <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
                           </th>
@@ -522,7 +528,7 @@ export function SummaryTab({ data }: Props) {
                           <tr key={student.id}>
                             <td
                               className="font-medium whitespace-nowrap sticky left-0 z-10"
-                              style={{ backgroundColor: "hsl(var(--card))" }}
+                              style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                             >
                               {student.name}
                             </td>
@@ -589,7 +595,7 @@ export function SummaryTab({ data }: Props) {
                   {(data.minTasks || []).length} tarefa(s) mínima(s) no total
                 </span>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[70vh]">
                 {filteredStudents.length === 0 ? (
                   <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
                     Nenhum aluno encontrado.
@@ -612,14 +618,14 @@ export function SummaryTab({ data }: Props) {
                   };
 
                   return (
-                    <table className="school-table" style={{ minWidth: "max-content" }}>
+                    <table className="school-table school-table-compact" style={{ minWidth: "max-content" }}>
                       <thead>
                         <tr>
-                          <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
-                          <th>Turma</th>
-                          <th className="text-center">Total Feitas</th>
-                          <th className="text-center">Total Possível</th>
-                          <th className="text-center">% Aproveitamento</th>
+                          <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>
+                          <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Turma</th>
+                          <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Feitas</th>
+                          <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Possível</th>
+                          <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -632,7 +638,7 @@ export function SummaryTab({ data }: Props) {
                             <tr key={student.id}>
                               <td
                                 className="font-medium whitespace-nowrap sticky left-0 z-10"
-                                style={{ backgroundColor: "hsl(var(--card))" }}
+                                style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                               >
                                 {student.name}
                               </td>
