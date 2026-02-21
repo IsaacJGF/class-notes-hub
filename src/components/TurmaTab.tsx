@@ -337,8 +337,8 @@ export function TurmaTab({
                       return (
                         <tr key={student.id}>
                           <td
-                            className="font-medium whitespace-nowrap sticky left-0 z-10"
-                            style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                            className="font-medium whitespace-nowrap sticky-first-col sticky left-0 z-10"
+                            style={{ width: studentNameColWidth, minWidth: studentNameColWidth }}
                           >
                             {student.name}
                           </td>
@@ -519,8 +519,8 @@ export function TurmaTab({
                       return (
                         <tr key={student.id}>
                           <td
-                            className="font-medium whitespace-nowrap sticky left-0 z-10"
-                            style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                            className="font-medium whitespace-nowrap sticky-first-col sticky left-0 z-10"
+                            style={{ width: studentNameColWidth, minWidth: studentNameColWidth }}
                           >
                             {student.name}
                           </td>
