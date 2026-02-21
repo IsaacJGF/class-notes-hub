@@ -109,19 +109,23 @@ All colors MUST be HSL.
   }
 
   .school-table tbody tr {
-    @apply border-b border-border transition-colors;
-  }
-
-  .school-table tbody tr:nth-child(even) {
-    background-color: hsl(var(--table-stripe));
-  }
-
-  .school-table tbody tr:hover {
-    background-color: hsl(var(--table-hover));
+    @apply border-b border-border;
   }
 
   .school-table tbody td {
-    @apply px-3 py-2;
+    @apply px-3 py-2 transition-colors;
+  }
+
+  .school-table tbody tr:nth-child(even) td {
+    background-color: hsl(var(--table-stripe));
+  }
+
+  .school-table tbody tr:hover td {
+    background-color: hsl(var(--table-hover));
+  }
+
+  .school-table tbody td.sticky-first-col {
+    background-color: hsl(var(--card));
   }
 
   .school-table.school-table-compact thead th {
@@ -221,4 +225,3 @@ All colors MUST be HSL.
     color: hsl(var(--primary));
   }
 }
-
