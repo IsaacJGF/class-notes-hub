@@ -146,6 +146,37 @@ export function SummaryTab({ data }: Props) {
     return `${day}/${m}`;
   };
 
+  const getColumnWidths = (tableData: Array<Array<string | number>>) => {
+    const columnCount = tableData[0]?.length ?? 0;
+
+    return Array.from({ length: columnCount }, (_, colIdx) => {
+      const longestCell = tableData.reduce((maxLength, row) => {
+        const cellValue = row[colIdx];
+        const cellText = cellValue == null ? "" : String(cellValue);
+        return Math.max(maxLength, cellText.length);
+      }, 0);
+
+      return { wch: Math.max(10, Math.min(40, longestCell + 2)) };
+    });
+  };
+
+  const centerColumnsExceptStudent = (ws: XLSX.WorkSheet, tableData: Array<Array<string | number>>) => {
+    const rowCount = tableData.length;
+    const columnCount = tableData[0]?.length ?? 0;
+
+    for (let rowIdx = 0; rowIdx < rowCount; rowIdx += 1) {
+      for (let colIdx = 1; colIdx < columnCount; colIdx += 1) {
+        const address = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+        const cell = ws[address];
+        if (!cell) continue;
+        cell.s = {
+          ...(cell.s || {}),
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+      }
+    }
+  };
+
   // ---- Export Excel ----
   const exportAttendanceExcel = () => {
     const headers = ["Aluno", "Turma", "Presença", "Faltas", "% Presença", "Participações", "Part./Aulas", "Pontos Extra", ...attendanceDates.map(formatDate)];
@@ -171,7 +202,11 @@ export function SummaryTab({ data }: Props) {
         ...dateColumns,
       ];
     });
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const tableData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(tableData);
+    ws["!cols"] = getColumnWidths(tableData);
+    centerColumnsExceptStudent(ws, tableData);
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Chamada");
     XLSX.writeFile(wb, "resumo_chamada.xlsx");
@@ -203,7 +238,11 @@ export function SummaryTab({ data }: Props) {
       });
       return [student.name, student.turma, done, total - done, pct !== "" ? `${pct}%` : "", ...actColumns];
     });
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const tableData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(tableData);
+    ws["!cols"] = getColumnWidths(tableData);
+    centerColumnsExceptStudent(ws, tableData);
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Atividades");
     XLSX.writeFile(wb, "resumo_atividades.xlsx");
