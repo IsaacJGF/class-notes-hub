@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData, Turma, Activity } from "@/types";
-import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Star } from "lucide-react";
+import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Star, Search, X } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface Props {
@@ -31,11 +31,36 @@ export function TurmaTab({
   const [newActivityName, setNewActivityName] = useState("");
   const [newActivityDate, setNewActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const turmaStudents = useMemo(
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if (e.key === "Escape" && showSearch) {
+        setShowSearch(false);
+        setSearchQuery("");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showSearch]);
+
+  const allTurmaStudents = useMemo(
     () => data.students.filter((s) => s.turma === turma.name).sort((a, b) => a.name.localeCompare(b.name)),
     [data.students, turma.name]
   );
+
+  const turmaStudents = useMemo(() => {
+    if (!searchQuery.trim()) return allTurmaStudents;
+    const q = searchQuery.toLowerCase();
+    return allTurmaStudents.filter((s) => s.name.toLowerCase().includes(q));
+  }, [allTurmaStudents, searchQuery]);
 
   const turmaActivities = useMemo(
     () => data.activities.filter((a) => a.turmaId === turma.id).sort((a, b) => a.date.localeCompare(b.date)),
@@ -120,7 +145,7 @@ export function TurmaTab({
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div
           className="rounded-lg px-4 py-2 text-sm font-bold"
           style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
@@ -128,8 +153,40 @@ export function TurmaTab({
           {turma.name}
         </div>
         <span className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
-          {turmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s)
+          {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s)
         </span>
+        <div className="ml-auto flex items-center gap-2">
+          {showSearch ? (
+            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
+              <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Pesquisar aluno..."
+                className="bg-transparent text-sm outline-none w-48"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <span className="text-xs mr-1" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  {turmaStudents.length}/{allTurmaStudents.length}
+                </span>
+              )}
+              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-0.5 hover:opacity-70">
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
+              style={{ color: "hsl(var(--muted-foreground))" }}
+              title="Pesquisar (Ctrl+F)"
+            >
+              <Search size={12} /> Pesquisar
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="section-card">

@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData } from "@/types";
-import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X } from "lucide-react";
 import * as XLSX from "xlsx";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
 
@@ -16,11 +16,36 @@ export function SummaryTab({ data }: Props) {
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities">("attendance");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredStudents = useMemo(() => {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if (e.key === "Escape" && showSearch) {
+        setShowSearch(false);
+        setSearchQuery("");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showSearch]);
+
+  const allFilteredStudents = useMemo(() => {
     if (filterTurma === "all") return data.students;
     return data.students.filter((s) => s.turma === filterTurma);
   }, [data.students, filterTurma]);
+
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return allFilteredStudents;
+    const q = searchQuery.toLowerCase();
+    return allFilteredStudents.filter((s) => s.name.toLowerCase().includes(q));
+  }, [allFilteredStudents, searchQuery]);
 
   const attendanceDates = useMemo(() => {
     let dates = Array.from(new Set(data.attendanceRecords.map((r) => r.date))).sort();
@@ -178,8 +203,9 @@ export function SummaryTab({ data }: Props) {
         </div>
       </div>
 
-      {/* Main sub-nav: Tabelas | Gráficos */}
-      <div className="flex gap-1 rounded-lg border border-border p-1" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content" }}>
+      {/* Search + Main sub-nav */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1 rounded-lg border border-border p-1" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content" }}>
         <button
           onClick={() => setMainView("tabelas")}
           className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
@@ -202,6 +228,39 @@ export function SummaryTab({ data }: Props) {
         >
           <BarChart2 size={14} /> Gráficos
         </button>
+        </div>
+        <div className="ml-auto">
+          {showSearch ? (
+            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
+              <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Pesquisar aluno..."
+                className="bg-transparent text-sm outline-none w-48"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <span className="text-xs mr-1" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  {filteredStudents.length}/{allFilteredStudents.length}
+                </span>
+              )}
+              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-0.5 hover:opacity-70">
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
+              style={{ color: "hsl(var(--muted-foreground))" }}
+              title="Pesquisar (Ctrl+F)"
+            >
+              <Search size={12} /> Pesquisar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── TABELAS ── */}
