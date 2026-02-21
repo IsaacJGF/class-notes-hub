@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData } from "@/types";
 import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X } from "lucide-react";
 import * as XLSX from "xlsx";
+import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
 
 interface Props {
@@ -20,12 +21,21 @@ export function SummaryTab({ data }: Props) {
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const focusAndSelectSearchInput = () => {
+    setTimeout(() => {
+      const input = searchInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 50);
+  };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setShowSearch(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
+        focusAndSelectSearchInput();
       }
       if (e.key === "Escape" && showSearch) {
         setShowSearch(false);
@@ -43,8 +53,7 @@ export function SummaryTab({ data }: Props) {
 
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return allFilteredStudents;
-    const q = searchQuery.toLowerCase();
-    return allFilteredStudents.filter((s) => s.name.toLowerCase().includes(q));
+    return allFilteredStudents.filter((s) => matchesAccentAware(s.name, searchQuery));
   }, [allFilteredStudents, searchQuery]);
 
   const studentNameColWidth = useMemo(() => {
@@ -352,7 +361,7 @@ export function SummaryTab({ data }: Props) {
             </div>
           ) : (
             <button
-              onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+              onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
               className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
               style={{ color: "hsl(var(--muted-foreground))" }}
               title="Pesquisar (Ctrl+F)"
