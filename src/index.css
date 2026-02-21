@@ -124,6 +124,18 @@ All colors MUST be HSL.
     @apply px-3 py-2;
   }
 
+  .school-table tbody td.sticky-first-col {
+    background-color: hsl(var(--card));
+  }
+
+  .school-table tbody tr:nth-child(even) td.sticky-first-col {
+    background-color: hsl(var(--table-stripe));
+  }
+
+  .school-table tbody tr:hover td.sticky-first-col {
+    background-color: hsl(var(--table-hover));
+  }
+
   .school-table.school-table-compact thead th {
     @apply px-2 py-2;
   }
@@ -221,4 +233,3 @@ All colors MUST be HSL.
     color: hsl(var(--primary));
   }
 }
-
