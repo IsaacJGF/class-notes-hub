@@ -33,10 +33,28 @@ export interface ActivityRecord {
   bonusTag?: "yellow" | "green" | null;
 }
 
+export interface MinTask {
+  id: string;
+  turmaId: string;
+  name: string;
+  date: string; // YYYY-MM-DD
+  totalQuestions: number;
+  createdAt: string;
+}
+
+export interface MinTaskRecord {
+  id: string;
+  studentId: string;
+  minTaskId: string;
+  questionsDone: number;
+}
+
 export interface SchoolData {
   students: Student[];
   turmas: Turma[];
   activities: Activity[];
   attendanceRecords: AttendanceRecord[];
   activityRecords: ActivityRecord[];
+  minTasks: MinTask[];
+  minTaskRecords: MinTaskRecord[];
 }

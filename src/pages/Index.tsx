@@ -100,6 +100,10 @@ const Index = () => {
             getActivityRecord={school.getActivityRecord}
             cycleActivityBonusTag={school.cycleActivityBonusTag}
             getActivityBonusTag={school.getActivityBonusTag}
+            addMinTask={school.addMinTask}
+            removeMinTask={school.removeMinTask}
+            setMinTaskRecord={school.setMinTaskRecord}
+            getMinTaskRecord={school.getMinTaskRecord}
           />
         )}
       </main>
