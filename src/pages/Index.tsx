@@ -31,7 +31,11 @@ const Index = () => {
         className="flex items-center gap-3 border-b border-border px-6 py-3 shadow-sm"
         style={{ backgroundColor: "hsl(var(--primary))" }}
       >
-        <GraduationCap size={22} style={{ color: "hsl(var(--primary-foreground))" }} />
+        <img
+          src="/app-icon.svg"
+          alt="Ícone Diário do Professor"
+          className="h-8 w-8 rounded-md border border-white/20"
+        />
         <div>
           <h1 className="text-base font-bold leading-tight" style={{ color: "hsl(var(--primary-foreground))" }}>
             Diário do Professor
