@@ -13,20 +13,6 @@ const defaultData: SchoolData = {
   minTaskRecords: [],
 };
 
-function normalizeSchoolData(rawData: unknown): SchoolData {
-  const parsedData = (rawData && typeof rawData === "object" ? rawData : {}) as Partial<SchoolData>;
-
-  return {
-    students: Array.isArray(parsedData.students) ? parsedData.students : [],
-    turmas: Array.isArray(parsedData.turmas) ? parsedData.turmas : [],
-    activities: Array.isArray(parsedData.activities) ? parsedData.activities : [],
-    attendanceRecords: Array.isArray(parsedData.attendanceRecords) ? parsedData.attendanceRecords : [],
-    activityRecords: Array.isArray(parsedData.activityRecords) ? parsedData.activityRecords : [],
-    minTasks: Array.isArray(parsedData.minTasks) ? parsedData.minTasks : [],
-    minTaskRecords: Array.isArray(parsedData.minTaskRecords) ? parsedData.minTaskRecords : [],
-  };
-}
-
 function generateId(): string {
   return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
@@ -35,7 +21,7 @@ export function useSchoolData() {
   const [data, setData] = useState<SchoolData>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return normalizeSchoolData(JSON.parse(stored));
+      if (stored) return JSON.parse(stored);
     } catch {}
     return defaultData;
   });
