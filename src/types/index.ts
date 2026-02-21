@@ -30,7 +30,14 @@ export interface ActivityRecord {
   studentId: string;
   activityId: string;
   done: boolean;
-  bonusTag?: "yellow" | "green" | null;
+}
+
+export interface ClassRecord {
+  id: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  participated: boolean;
+  extraPoint: boolean;
 }
 
 export interface MinTask {
@@ -55,6 +62,7 @@ export interface SchoolData {
   activities: Activity[];
   attendanceRecords: AttendanceRecord[];
   activityRecords: ActivityRecord[];
+  classRecords: ClassRecord[];
   minTasks: MinTask[];
   minTaskRecords: MinTaskRecord[];
 }
