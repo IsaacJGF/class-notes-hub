@@ -434,7 +434,7 @@ export function TurmaTab({
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
                                     className={done === true ? "btn-toggle-done" : "btn-toggle-pending"}
                                   >
-                                    {done === true ? "✓ Feito" : done === false ? "✗ Pendente" : "Marcar"}
+                                    {done === true ? "✓ Feito" : "✗ Pendente"}
                                   </button>
                                 </div>
                               </td>
