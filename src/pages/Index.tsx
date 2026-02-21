@@ -98,8 +98,10 @@ const Index = () => {
             getAttendance={school.getAttendance}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecord={school.getActivityRecord}
-            cycleActivityBonusTag={school.cycleActivityBonusTag}
-            getActivityBonusTag={school.getActivityBonusTag}
+            toggleParticipation={school.toggleParticipation}
+            toggleExtraPoint={school.toggleExtraPoint}
+            getParticipation={school.getParticipation}
+            getExtraPoint={school.getExtraPoint}
             addMinTask={school.addMinTask}
             removeMinTask={school.removeMinTask}
             setMinTaskRecord={school.setMinTaskRecord}

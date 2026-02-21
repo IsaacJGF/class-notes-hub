@@ -65,6 +65,28 @@ export function SummaryTab({ data }: Props) {
     return acts.sort((a, b) => a.date.localeCompare(b.date));
   }, [data.activities, data.turmas, filterTurma, filterDateFrom, filterDateTo]);
 
+  const getClassDatesForStudent = (studentId: string, turmaName: string) => {
+    const turma = data.turmas.find((t) => t.name === turmaName);
+    if (!turma) return [] as string[];
+
+    const attendanceDatesForStudent = data.attendanceRecords
+      .filter((r) => r.studentId === studentId)
+      .map((r) => r.date);
+
+    const activityDatesForTurma = data.activities
+      .filter((a) => a.turmaId === turma.id)
+      .map((a) => a.date);
+
+    const classRecordDatesForStudent = (data.classRecords || [])
+      .filter((r) => r.studentId === studentId)
+      .map((r) => r.date);
+
+    let dates = Array.from(new Set([...attendanceDatesForStudent, ...activityDatesForTurma, ...classRecordDatesForStudent])).sort();
+    if (filterDateFrom) dates = dates.filter((d) => d >= filterDateFrom);
+    if (filterDateTo) dates = dates.filter((d) => d <= filterDateTo);
+    return dates;
+  };
+
   const getAttendanceStatus = (studentId: string, date: string) => {
     const record = data.attendanceRecords.find(
       (r) => r.studentId === studentId && r.date === date
@@ -93,6 +115,26 @@ export function SummaryTab({ data }: Props) {
     return { present, total };
   };
 
+  const getParticipationCount = (studentId: string) => {
+    return (data.classRecords || []).filter((r) => {
+      if (r.studentId !== studentId) return false;
+      if (!r.participated) return false;
+      if (filterDateFrom && r.date < filterDateFrom) return false;
+      if (filterDateTo && r.date > filterDateTo) return false;
+      return true;
+    }).length;
+  };
+
+  const getExtraPointCount = (studentId: string) => {
+    return (data.classRecords || []).filter((r) => {
+      if (r.studentId !== studentId) return false;
+      if (!r.extraPoint) return false;
+      if (filterDateFrom && r.date < filterDateFrom) return false;
+      if (filterDateTo && r.date > filterDateTo) return false;
+      return true;
+    }).length;
+  };
+
   const formatDate = (d: string) => {
     const [, m, day] = d.split("-");
     return `${day}/${m}`;
@@ -100,15 +142,28 @@ export function SummaryTab({ data }: Props) {
 
   // ---- Export Excel ----
   const exportAttendanceExcel = () => {
-    const headers = ["Aluno", "Turma", "Presença", "Faltas", "% Presença", ...attendanceDates.map(formatDate)];
+    const headers = ["Aluno", "Turma", "Presença", "Faltas", "% Presença", "Participações", "Part./Aulas", "Pontos Extra", ...attendanceDates.map(formatDate)];
     const rows = filteredStudents.map((student) => {
       const { present, total } = getAttendanceSummary(student.id);
+      const classDatesForStudent = getClassDatesForStudent(student.id, student.turma);
+      const participationCount = getParticipationCount(student.id);
+      const extraPointCount = getExtraPointCount(student.id);
       const pct = total > 0 ? Math.round((present / total) * 100) : "";
       const dateColumns = attendanceDates.map((d) => {
         const s = getAttendanceStatus(student.id, d);
         return s === true ? "P" : s === false ? "F" : "";
       });
-      return [student.name, student.turma, present, total - present, pct !== "" ? `${pct}%` : "", ...dateColumns];
+      return [
+        student.name,
+        student.turma,
+        present,
+        total - present,
+        pct !== "" ? `${pct}%` : "",
+        participationCount,
+        `${participationCount}/${classDatesForStudent.length}`,
+        extraPointCount,
+        ...dateColumns,
+      ];
     });
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
@@ -335,6 +390,9 @@ export function SummaryTab({ data }: Props) {
                         <th>Presença</th>
                         <th>Faltas</th>
                         <th>% Presença</th>
+                        <th>Participações</th>
+                        <th>Part./Aulas</th>
+                        <th>Pontos Extra</th>
                         {attendanceDates.map((d) => (
                           <th key={d} className="text-center">{formatDate(d)}</th>
                         ))}
@@ -382,6 +440,9 @@ export function SummaryTab({ data }: Props) {
                                 <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>—</span>
                               )}
                             </td>
+                            <td className="text-center font-semibold" style={{ color: "#854d0e" }}>{getParticipationCount(student.id)}</td>
+                            <td className="text-center text-sm">{getParticipationCount(student.id)}/{getClassDatesForStudent(student.id, student.turma).length}</td>
+                            <td className="text-center font-semibold" style={{ color: "#166534" }}>{getExtraPointCount(student.id)}</td>
                             {attendanceDates.map((d) => {
                               const status = getAttendanceStatus(student.id, d);
                               return (

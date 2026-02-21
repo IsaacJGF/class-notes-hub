@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData, Turma, Activity, MinTask } from "@/types";
-import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Star, Search, X, ClipboardList } from "lucide-react";
+import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
 
 type SubTab = "diario" | "tarefa-minima";
@@ -14,8 +14,10 @@ interface Props {
   getAttendance: (studentId: string, date: string) => boolean | null;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecord: (studentId: string, activityId: string) => boolean | null;
-  cycleActivityBonusTag: (studentId: string, activityId: string) => void;
-  getActivityBonusTag: (studentId: string, activityId: string) => "yellow" | "green" | null;
+  toggleParticipation: (studentId: string, date: string) => void;
+  toggleExtraPoint: (studentId: string, date: string) => void;
+  getParticipation: (studentId: string, date: string) => boolean;
+  getExtraPoint: (studentId: string, date: string) => boolean;
   addMinTask: (turmaId: string, name: string, date: string, totalQuestions: number) => MinTask;
   removeMinTask: (id: string) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
@@ -31,8 +33,10 @@ export function TurmaTab({
   getAttendance,
   toggleActivityRecord,
   getActivityRecord,
-  cycleActivityBonusTag,
-  getActivityBonusTag,
+  toggleParticipation,
+  toggleExtraPoint,
+  getParticipation,
+  getExtraPoint,
   addMinTask,
   removeMinTask,
   setMinTaskRecord,
@@ -120,47 +124,21 @@ export function TurmaTab({
     return { present, total: turmaStudents.length };
   };
 
-  const bonusInfo = (tag: "yellow" | "green" | null) => {
-    if (tag === "yellow") {
-      return {
-        label: "Extra: Amarelo",
-        style: { backgroundColor: "#fef08a", color: "#854d0e", borderColor: "#fde047" },
-        cellStyle: { backgroundColor: "#fefce8" },
-      };
-    }
-    if (tag === "green") {
-      return {
-        label: "Extra: Verde",
-        style: { backgroundColor: "#bbf7d0", color: "#166534", borderColor: "#86efac" },
-        cellStyle: { backgroundColor: "#f0fdf4" },
-      };
-    }
-    return {
-      label: "Marcar Extra",
-      style: {
-        backgroundColor: "hsl(var(--secondary))",
-        color: "hsl(var(--secondary-foreground))",
-        borderColor: "hsl(var(--border))",
-      },
-      cellStyle: {},
-    };
-  };
-
   const exportCombinedExcel = () => {
-    const headers = ["Aluno", "Chamada", ...dailyActivities.map((a) => a.name)];
+    const headers = ["Aluno", "Chamada", "Participação", "Ponto Extra", ...dailyActivities.map((a) => a.name)];
     const rows = turmaStudents.map((s) => {
       const attendance = getAttendance(s.id, attendanceDate);
       const attendanceLabel = attendance === true ? "P" : attendance === false ? "F" : "";
 
+      const participationLabel = getParticipation(s.id, attendanceDate) ? "Sim" : "";
+      const extraPointLabel = getExtraPoint(s.id, attendanceDate) ? "Sim" : "";
+
       const activities = dailyActivities.map((a) => {
         const done = getActivityRecord(s.id, a.id);
-        const tag = getActivityBonusTag(s.id, a.id);
-        const doneLabel = done === true ? "Feito" : done === false ? "Pendente" : "";
-        const bonusLabel = tag === "yellow" ? " (Extra Amarelo)" : tag === "green" ? " (Extra Verde)" : "";
-        return `${doneLabel}${bonusLabel}`.trim();
+        return done === true ? "Feito" : done === false ? "Pendente" : "";
       });
 
-      return [s.name, attendanceLabel, ...activities];
+      return [s.name, attendanceLabel, participationLabel, extraPointLabel, ...activities];
     });
 
     const ws = XLSX.utils.aoa_to_sheet([[`Turma ${turma.name} - ${formatDate(attendanceDate)}`], [], headers, ...rows]);
@@ -325,6 +303,8 @@ export function TurmaTab({
                       <th className="sticky left-0 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>#</th>
                       <th className="sticky left-8 z-10" style={{ backgroundColor: "hsl(var(--table-header))" }}>Aluno</th>
                       <th className="text-center">Chamada</th>
+                      <th className="text-center">Participação</th>
+                      <th className="text-center">Ponto Extra</th>
                       {dailyActivities.map((a) => (
                         <th key={a.id} className="text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -371,26 +351,50 @@ export function TurmaTab({
                               </button>
                             </div>
                           </td>
+                          <td className="text-center">
+                            <button
+                              onClick={() => toggleParticipation(student.id, attendanceDate)}
+                              className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium"
+                              style={
+                                getParticipation(student.id, attendanceDate)
+                                  ? { backgroundColor: "#fef08a", color: "#854d0e", borderColor: "#fde047" }
+                                  : {
+                                      backgroundColor: "hsl(var(--secondary))",
+                                      color: "hsl(var(--secondary-foreground))",
+                                      borderColor: "hsl(var(--border))",
+                                    }
+                              }
+                            >
+                              {getParticipation(student.id, attendanceDate) ? "✓ Participou" : "Marcar"}
+                            </button>
+                          </td>
+                          <td className="text-center">
+                            <button
+                              onClick={() => toggleExtraPoint(student.id, attendanceDate)}
+                              className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium"
+                              style={
+                                getExtraPoint(student.id, attendanceDate)
+                                  ? { backgroundColor: "#bbf7d0", color: "#166534", borderColor: "#86efac" }
+                                  : {
+                                      backgroundColor: "hsl(var(--secondary))",
+                                      color: "hsl(var(--secondary-foreground))",
+                                      borderColor: "hsl(var(--border))",
+                                    }
+                              }
+                            >
+                              {getExtraPoint(student.id, attendanceDate) ? "✓ Extra" : "Marcar"}
+                            </button>
+                          </td>
                           {dailyActivities.map((a) => {
                             const done = getActivityRecord(student.id, a.id);
-                            const tag = getActivityBonusTag(student.id, a.id);
-                            const visual = bonusInfo(tag);
                             return (
-                              <td key={a.id} className="text-center" style={visual.cellStyle}>
+                              <td key={a.id} className="text-center">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
                                     className={done === true ? "btn-toggle-done" : "btn-toggle-pending"}
                                   >
                                     {done === true ? "✓ Feito" : done === false ? "✗ Pendente" : "Marcar"}
-                                  </button>
-                                  <button
-                                    onClick={() => cycleActivityBonusTag(student.id, a.id)}
-                                    className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium"
-                                    style={visual.style}
-                                    title="Alternar pontuação extra: sem marcação, amarelo e verde"
-                                  >
-                                    <Star size={11} /> {visual.label}
                                   </button>
                                 </div>
                               </td>

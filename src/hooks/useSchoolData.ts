@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { SchoolData, Student, Turma, Activity, AttendanceRecord, ActivityRecord, MinTask, MinTaskRecord } from "@/types";
+import { SchoolData, Student, Turma, Activity, AttendanceRecord, ActivityRecord, ClassRecord, MinTask, MinTaskRecord } from "@/types";
 
 const STORAGE_KEY = "school_control_data";
 
@@ -9,6 +9,7 @@ const defaultData: SchoolData = {
   activities: [],
   attendanceRecords: [],
   activityRecords: [],
+  classRecords: [],
   minTasks: [],
   minTaskRecords: [],
 };
@@ -22,6 +23,7 @@ function normalizeSchoolData(rawData: unknown): SchoolData {
     activities: Array.isArray(parsedData.activities) ? parsedData.activities : [],
     attendanceRecords: Array.isArray(parsedData.attendanceRecords) ? parsedData.attendanceRecords : [],
     activityRecords: Array.isArray(parsedData.activityRecords) ? parsedData.activityRecords : [],
+    classRecords: Array.isArray(parsedData.classRecords) ? parsedData.classRecords : [],
     minTasks: Array.isArray(parsedData.minTasks) ? parsedData.minTasks : [],
     minTaskRecords: Array.isArray(parsedData.minTaskRecords) ? parsedData.minTaskRecords : [],
   };
@@ -67,6 +69,7 @@ export function useSchoolData() {
       students: prev.students.filter((s) => s.id !== id),
       attendanceRecords: prev.attendanceRecords.filter((r) => r.studentId !== id),
       activityRecords: prev.activityRecords.filter((r) => r.studentId !== id),
+      classRecords: prev.classRecords.filter((r) => r.studentId !== id),
     }));
   }, []);
 
@@ -177,40 +180,7 @@ export function useSchoolData() {
         studentId,
         activityId,
         done: true,
-        bonusTag: null,
       };
-      return {
-        ...prev,
-        activityRecords: [...prev.activityRecords, newRecord],
-      };
-    });
-  }, []);
-
-  const cycleActivityBonusTag = useCallback((studentId: string, activityId: string) => {
-    setData((prev) => {
-      const existing = prev.activityRecords.find(
-        (r) => r.studentId === studentId && r.activityId === activityId
-      );
-
-      if (existing) {
-        const nextBonusTag =
-          existing.bonusTag === "yellow" ? "green" : existing.bonusTag === "green" ? null : "yellow";
-        return {
-          ...prev,
-          activityRecords: prev.activityRecords.map((r) =>
-            r.id === existing.id ? { ...r, bonusTag: nextBonusTag } : r
-          ),
-        };
-      }
-
-      const newRecord: ActivityRecord = {
-        id: generateId(),
-        studentId,
-        activityId,
-        done: false,
-        bonusTag: "yellow",
-      };
-
       return {
         ...prev,
         activityRecords: [...prev.activityRecords, newRecord],
@@ -229,15 +199,52 @@ export function useSchoolData() {
     [data.activityRecords]
   );
 
-  const getActivityBonusTag = useCallback(
-    (studentId: string, activityId: string): "yellow" | "green" | null => {
-      const record = data.activityRecords.find(
-        (r) => r.studentId === studentId && r.activityId === activityId
-      );
-      return record?.bonusTag ?? null;
-    },
-    [data.activityRecords]
-  );
+  // --- Class Records (participation + extra point per date) ---
+  const setClassRecordField = useCallback((studentId: string, date: string, field: "participated" | "extraPoint") => {
+    setData((prev) => {
+      const existing = prev.classRecords.find((r) => r.studentId === studentId && r.date === date);
+
+      if (existing) {
+        return {
+          ...prev,
+          classRecords: prev.classRecords.map((r) =>
+            r.id === existing.id ? { ...r, [field]: !r[field] } : r
+          ),
+        };
+      }
+
+      const newRecord: ClassRecord = {
+        id: generateId(),
+        studentId,
+        date,
+        participated: field === "participated",
+        extraPoint: field === "extraPoint",
+      };
+
+      return {
+        ...prev,
+        classRecords: [...prev.classRecords, newRecord],
+      };
+    });
+  }, []);
+
+  const toggleParticipation = useCallback((studentId: string, date: string) => {
+    setClassRecordField(studentId, date, "participated");
+  }, [setClassRecordField]);
+
+  const toggleExtraPoint = useCallback((studentId: string, date: string) => {
+    setClassRecordField(studentId, date, "extraPoint");
+  }, [setClassRecordField]);
+
+  const getParticipation = useCallback((studentId: string, date: string): boolean => {
+    const record = data.classRecords.find((r) => r.studentId === studentId && r.date === date);
+    return record?.participated ?? false;
+  }, [data.classRecords]);
+
+  const getExtraPoint = useCallback((studentId: string, date: string): boolean => {
+    const record = data.classRecords.find((r) => r.studentId === studentId && r.date === date);
+    return record?.extraPoint ?? false;
+  }, [data.classRecords]);
 
   // --- Min Tasks ---
   const addMinTask = useCallback((turmaId: string, name: string, date: string, totalQuestions: number) => {
@@ -306,8 +313,10 @@ export function useSchoolData() {
     getAttendance,
     toggleActivityRecord,
     getActivityRecord,
-    cycleActivityBonusTag,
-    getActivityBonusTag,
+    toggleParticipation,
+    toggleExtraPoint,
+    getParticipation,
+    getExtraPoint,
     addMinTask,
     removeMinTask,
     setMinTaskRecord,
