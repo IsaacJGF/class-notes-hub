@@ -104,14 +104,35 @@ export function useSchoolData() {
 
   // --- Activities ---
   const addActivity = useCallback((turmaId: string, name: string, date: string) => {
+    const activityId = generateId();
     const activity: Activity = {
-      id: generateId(),
+      id: activityId,
       turmaId,
       name: name.trim(),
       date,
       createdAt: new Date().toISOString(),
     };
-    setData((prev) => ({ ...prev, activities: [...prev.activities, activity] }));
+
+    setData((prev) => {
+      const turma = prev.turmas.find((t) => t.id === turmaId);
+      const turmaStudents = turma
+        ? prev.students.filter((s) => s.turma === turma.name)
+        : [];
+
+      const pendingRecords: ActivityRecord[] = turmaStudents.map((student) => ({
+        id: generateId(),
+        studentId: student.id,
+        activityId,
+        done: false,
+      }));
+
+      return {
+        ...prev,
+        activities: [...prev.activities, activity],
+        activityRecords: [...prev.activityRecords, ...pendingRecords],
+      };
+    });
+
     return activity;
   }, []);
 
