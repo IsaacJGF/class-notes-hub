@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Diário do Professor</title>
+  <desc id="desc">Ícone de um capelo acadêmico branco em fundo azul.</desc>
+  <rect width="512" height="512" rx="36" fill="#1f3563" />
+  <g fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 224L256 152L416 224L256 296L96 224Z" />
+    <path d="M416 224V304" />
+    <path d="M176 260V320C176 351 213 376 256 376C299 376 336 351 336 320V260" />
+  </g>
+</svg>
