@@ -10,11 +10,12 @@ type TabId = "cadastro" | "resumo" | string; // string = turma id
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("cadastro");
   const school = useSchoolData();
+  const sortedTurmas = [...school.data.turmas].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
   const tabs = [
     { id: "cadastro", label: "Cadastro", icon: <Users size={14} /> },
     { id: "resumo", label: "Resumo", icon: <LayoutDashboard size={14} /> },
-    ...school.data.turmas.map((t) => ({
+    ...sortedTurmas.map((t) => ({
       id: t.id,
       label: t.name,
       icon: <GraduationCap size={14} />,

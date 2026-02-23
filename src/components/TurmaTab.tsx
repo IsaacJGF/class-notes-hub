@@ -3,6 +3,7 @@ import { SchoolData, Turma, Activity, MinTask } from "@/types";
 import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
+import { MinTaskCsvImportModal } from "@/components/MinTaskCsvImportModal";
 
 type SubTab = "diario" | "tarefa-minima";
 
@@ -53,6 +54,8 @@ export function TurmaTab({
   const [newMinTaskName, setNewMinTaskName] = useState("");
   const [newMinTaskDate, setNewMinTaskDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [newMinTaskTotal, setNewMinTaskTotal] = useState(20);
+  const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
+  const [showMinTaskImportModal, setShowMinTaskImportModal] = useState(false);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -80,8 +83,13 @@ export function TurmaTab({
   }, [showSearch]);
 
   const allTurmaStudents = useMemo(
-    () => data.students.filter((s) => s.turma === turma.name).sort((a, b) => a.name.localeCompare(b.name)),
-    [data.students, turma.name]
+    () => data.students
+      .filter((s) => s.turma === turma.name)
+      .sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+        return studentSortOrder === "asc" ? comparison : -comparison;
+      }),
+    [data.students, turma.name, studentSortOrder]
   );
 
   const turmaStudents = useMemo(() => {
@@ -202,6 +210,14 @@ export function TurmaTab({
           {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s)
         </span>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+            className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80"
+            style={{ color: "hsl(var(--muted-foreground))" }}
+            title="Alternar ordem alfabética"
+          >
+            {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
+          </button>
           {showSearch ? (
             <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
               <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
@@ -502,9 +518,18 @@ export function TurmaTab({
           <div className="section-card">
             <div className="section-card-header">
               <span className="section-card-title">Planilha de Tarefas Mínimas</span>
-              <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                {turmaMinTasks.length} tarefa(s) mínima(s)
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  {turmaMinTasks.length} tarefa(s) mínima(s)
+                </span>
+                <button
+                  onClick={() => setShowMinTaskImportModal(true)}
+                  className="rounded border border-border px-2 py-1 text-xs font-semibold hover:opacity-80"
+                  style={{ color: "hsl(var(--muted-foreground))" }}
+                >
+                  Importar CSV
+                </button>
+              </div>
             </div>
             <div className="overflow-auto max-h-[70vh]">
               {turmaStudents.length === 0 ? (
@@ -605,6 +630,15 @@ export function TurmaTab({
           </div>
         </>
       )}
+
+      <MinTaskCsvImportModal
+        open={showMinTaskImportModal}
+        onClose={() => setShowMinTaskImportModal(false)}
+        turma={turma}
+        students={allTurmaStudents}
+        minTasks={turmaMinTasks}
+        setMinTaskRecord={setMinTaskRecord}
+      />
     </div>
   );
 }
