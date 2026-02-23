@@ -18,6 +18,7 @@ export function SummaryTab({ data }: Props) {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities" | "mintasks">("attendance");
   const [searchQuery, setSearchQuery] = useState("");
+  const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,9 +48,20 @@ export function SummaryTab({ data }: Props) {
   }, [showSearch]);
 
   const allFilteredStudents = useMemo(() => {
-    if (filterTurma === "all") return data.students;
-    return data.students.filter((s) => s.turma === filterTurma);
-  }, [data.students, filterTurma]);
+    const students = filterTurma === "all"
+      ? data.students
+      : data.students.filter((s) => s.turma === filterTurma);
+
+    return [...students].sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+      return studentSortOrder === "asc" ? comparison : -comparison;
+    });
+  }, [data.students, filterTurma, studentSortOrder]);
+
+  const sortedTurmas = useMemo(
+    () => [...data.turmas].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })),
+    [data.turmas]
+  );
 
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return allFilteredStudents;
@@ -275,7 +287,7 @@ export function SummaryTab({ data }: Props) {
               onChange={(e) => setFilterTurma(e.target.value)}
             >
               <option value="all">Todas as turmas</option>
-              {data.turmas.map((t) => (
+              {sortedTurmas.map((t) => (
                 <option key={t.id} value={t.name}>{t.name}</option>
               ))}
             </select>
@@ -339,6 +351,14 @@ export function SummaryTab({ data }: Props) {
         </button>
         </div>
         <div className="ml-auto">
+          <button
+            onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+            className="mr-2 rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80"
+            style={{ color: "hsl(var(--muted-foreground))" }}
+            title="Alternar ordem alfabética"
+          >
+            {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
+          </button>
           {showSearch ? (
             <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
               <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
