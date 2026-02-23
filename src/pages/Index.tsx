@@ -88,6 +88,10 @@ const Index = () => {
             removeStudent={school.removeStudent}
             addTurma={school.addTurma}
             removeTurma={school.removeTurma}
+            exportToJson={school.exportToJson}
+            exportToCsv={school.exportToCsv}
+            importFromJson={school.importFromJson}
+            importFromCsv={school.importFromCsv}
           />
         )}
         {activeTab === "resumo" && (
