@@ -66,6 +66,11 @@ All colors MUST be HSL.
     --table-stripe: 215 20% 97%;
     --table-hover: 215 30% 93%;
 
+    /* Alert tokens */
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 14%;
+    --warning-light: 38 92% 95%;
+
     --sidebar-background: 220 55% 18%;
     --sidebar-foreground: 210 30% 85%;
     --sidebar-primary: 190 60% 50%;
@@ -74,6 +79,70 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 210 30% 90%;
     --sidebar-border: 220 50% 28%;
     --sidebar-ring: 190 60% 50%;
+  }
+
+  .dark {
+    --background: 222 30% 10%;
+    --foreground: 210 20% 92%;
+
+    --card: 222 25% 14%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 222 25% 14%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 210 60% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 20% 22%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 15% 20%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 190 55% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 25%;
+    --input: 220 15% 22%;
+    --ring: 210 60% 55%;
+
+    --present: 140 55% 45%;
+    --present-foreground: 0 0% 100%;
+    --present-light: 140 30% 18%;
+
+    --absent: 0 65% 50%;
+    --absent-foreground: 0 0% 100%;
+    --absent-light: 0 40% 18%;
+
+    --done: 210 60% 50%;
+    --done-foreground: 0 0% 100%;
+    --done-light: 210 40% 18%;
+
+    --not-done: 35 70% 50%;
+    --not-done-foreground: 0 0% 100%;
+    --not-done-light: 35 40% 18%;
+
+    --table-header: 220 30% 18%;
+    --table-header-foreground: 210 20% 90%;
+    --table-stripe: 222 25% 12%;
+    --table-hover: 220 20% 18%;
+
+    --warning: 38 80% 50%;
+    --warning-foreground: 38 80% 12%;
+    --warning-light: 38 40% 18%;
+
+    --sidebar-background: 222 30% 8%;
+    --sidebar-foreground: 210 20% 80%;
+    --sidebar-primary: 190 55% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 20%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 25% 20%;
+    --sidebar-ring: 190 55% 50%;
   }
 }
 
@@ -122,10 +191,6 @@ All colors MUST be HSL.
 
   .school-table tbody tr:hover td {
     background-color: hsl(var(--table-hover));
-  }
-
-  .school-table tbody td.sticky-first-col {
-    background-color: hsl(var(--card));
   }
 
   .school-table tbody td.sticky-first-col {

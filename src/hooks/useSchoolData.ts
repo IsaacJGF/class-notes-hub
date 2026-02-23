@@ -1,8 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { SchoolData, Student, Turma, Activity, AttendanceRecord, ActivityRecord, ClassRecord, MinTask, MinTaskRecord } from "@/types";
 import { parseSchoolDataCsv, serializeSchoolDataToCsv } from "@/lib/dataTransfer";
 
 const STORAGE_KEY = "school_control_data";
+const SCHEMA_VERSION = 1;
+
+interface StoredData {
+  schemaVersion: number;
+  data: SchoolData;
+}
 
 const defaultData: SchoolData = {
   students: [],
@@ -30,6 +36,20 @@ function normalizeSchoolData(rawData: unknown): SchoolData {
   };
 }
 
+function migrateData(stored: unknown): SchoolData {
+  if (!stored || typeof stored !== "object") return defaultData;
+
+  // Check if it's the new versioned format
+  const obj = stored as Record<string, unknown>;
+  if (typeof obj.schemaVersion === "number" && obj.data) {
+    // Future migrations would go here based on schemaVersion
+    return normalizeSchoolData(obj.data);
+  }
+
+  // Legacy format: raw SchoolData without version wrapper
+  return normalizeSchoolData(stored);
+}
+
 function generateId(): string {
   return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
@@ -38,24 +58,66 @@ export function useSchoolData() {
   const [data, setData] = useState<SchoolData>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return normalizeSchoolData(JSON.parse(stored));
+      if (stored) return migrateData(JSON.parse(stored));
     } catch {}
     return defaultData;
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const payload: StoredData = { schemaVersion: SCHEMA_VERSION, data };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [data]);
+
+  // ── In-memory indexes for O(1) lookups ──
+  const attendanceIndex = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const r of data.attendanceRecords) {
+      map.set(`${r.studentId}|${r.date}`, r);
+    }
+    return map;
+  }, [data.attendanceRecords]);
+
+  const activityRecordIndex = useMemo(() => {
+    const map = new Map<string, ActivityRecord>();
+    for (const r of data.activityRecords) {
+      map.set(`${r.studentId}|${r.activityId}`, r);
+    }
+    return map;
+  }, [data.activityRecords]);
+
+  const classRecordIndex = useMemo(() => {
+    const map = new Map<string, ClassRecord>();
+    for (const r of data.classRecords) {
+      map.set(`${r.studentId}|${r.date}`, r);
+    }
+    return map;
+  }, [data.classRecords]);
+
+  const minTaskRecordIndex = useMemo(() => {
+    const map = new Map<string, MinTaskRecord>();
+    for (const r of data.minTaskRecords) {
+      map.set(`${r.studentId}|${r.minTaskId}`, r);
+    }
+    return map;
+  }, [data.minTaskRecords]);
+
+  const turmaByIdIndex = useMemo(() => {
+    const map = new Map<string, Turma>();
+    for (const t of data.turmas) map.set(t.id, t);
+    return map;
+  }, [data.turmas]);
 
   // --- Students ---
   const addStudent = useCallback((name: string, turmaId: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length > 200) return;
     setData((prev) => {
       const turma = prev.turmas.find((t) => t.id === turmaId);
       if (!turma) return prev;
 
       const student: Student = {
         id: generateId(),
-        name: name.trim(),
+        name: trimmed,
         turma: turma.name,
         createdAt: new Date().toISOString(),
       };
@@ -71,13 +133,14 @@ export function useSchoolData() {
       attendanceRecords: prev.attendanceRecords.filter((r) => r.studentId !== id),
       activityRecords: prev.activityRecords.filter((r) => r.studentId !== id),
       classRecords: prev.classRecords.filter((r) => r.studentId !== id),
+      minTaskRecords: prev.minTaskRecords.filter((r) => r.studentId !== id),
     }));
   }, []);
 
   // --- Turmas ---
   const addTurma = useCallback((name: string) => {
     const trimmedName = name.trim();
-    if (!trimmedName) return null;
+    if (!trimmedName || trimmedName.length > 100) return null;
 
     const exists = data.turmas.some((t) => t.name.toLowerCase() === trimmedName.toLowerCase());
     if (exists) return null;
@@ -100,16 +163,26 @@ export function useSchoolData() {
       turmas: prev.turmas.filter((t) => t.id !== id),
       students: prev.students.filter((s) => s.turma !== turma.name),
       activities: prev.activities.filter((a) => a.turmaId !== id),
+      minTasks: prev.minTasks.filter((t) => t.turmaId !== id),
+      minTaskRecords: prev.minTaskRecords.filter((r) => {
+        const task = prev.minTasks.find((t) => t.id === r.minTaskId);
+        return !task || task.turmaId !== id;
+      }),
     }));
   }, [data.turmas]);
 
   // --- Activities ---
   const addActivity = useCallback((turmaId: string, name: string, date: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length > 200 || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { id: "", turmaId, name: trimmed, date, createdAt: "" } as Activity;
+    }
+
     const activityId = generateId();
     const activity: Activity = {
       id: activityId,
       turmaId,
-      name: name.trim(),
+      name: trimmed,
       date,
       createdAt: new Date().toISOString(),
     };
@@ -145,8 +218,9 @@ export function useSchoolData() {
     }));
   }, []);
 
-  // --- Attendance ---
+  // --- Attendance (using index for reads) ---
   const toggleAttendance = useCallback((studentId: string, date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     setData((prev) => {
       const existing = prev.attendanceRecords.find(
         (r) => r.studentId === studentId && r.date === date
@@ -174,16 +248,14 @@ export function useSchoolData() {
 
   const getAttendance = useCallback(
     (studentId: string, date: string): boolean | null => {
-      const record = data.attendanceRecords.find(
-        (r) => r.studentId === studentId && r.date === date
-      );
+      const record = attendanceIndex.get(`${studentId}|${date}`);
       if (!record) return null;
       return record.present;
     },
-    [data.attendanceRecords]
+    [attendanceIndex]
   );
 
-  // --- Activity Records ---
+  // --- Activity Records (using index for reads) ---
   const toggleActivityRecord = useCallback((studentId: string, activityId: string) => {
     setData((prev) => {
       const existing = prev.activityRecords.find(
@@ -212,16 +284,14 @@ export function useSchoolData() {
 
   const getActivityRecord = useCallback(
     (studentId: string, activityId: string): boolean | null => {
-      const record = data.activityRecords.find(
-        (r) => r.studentId === studentId && r.activityId === activityId
-      );
+      const record = activityRecordIndex.get(`${studentId}|${activityId}`);
       if (!record) return null;
       return record.done;
     },
-    [data.activityRecords]
+    [activityRecordIndex]
   );
 
-  // --- Class Records (participation + extra point per date) ---
+  // --- Class Records (using index for reads) ---
   const setClassRecordField = useCallback((studentId: string, date: string, field: "participated" | "extraPoint") => {
     setData((prev) => {
       const existing = prev.classRecords.find((r) => r.studentId === studentId && r.date === date);
@@ -259,21 +329,25 @@ export function useSchoolData() {
   }, [setClassRecordField]);
 
   const getParticipation = useCallback((studentId: string, date: string): boolean => {
-    const record = data.classRecords.find((r) => r.studentId === studentId && r.date === date);
+    const record = classRecordIndex.get(`${studentId}|${date}`);
     return record?.participated ?? false;
-  }, [data.classRecords]);
+  }, [classRecordIndex]);
 
   const getExtraPoint = useCallback((studentId: string, date: string): boolean => {
-    const record = data.classRecords.find((r) => r.studentId === studentId && r.date === date);
+    const record = classRecordIndex.get(`${studentId}|${date}`);
     return record?.extraPoint ?? false;
-  }, [data.classRecords]);
+  }, [classRecordIndex]);
 
   // --- Min Tasks ---
   const addMinTask = useCallback((turmaId: string, name: string, date: string, totalQuestions: number) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length > 200 || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || totalQuestions <= 0) {
+      return { id: "", turmaId, name: trimmed, date, totalQuestions, createdAt: "" } as MinTask;
+    }
     const minTask: MinTask = {
       id: generateId(),
       turmaId,
-      name: name.trim(),
+      name: trimmed,
       date,
       totalQuestions,
       createdAt: new Date().toISOString(),
@@ -315,12 +389,10 @@ export function useSchoolData() {
 
   const getMinTaskRecord = useCallback(
     (studentId: string, minTaskId: string): number => {
-      const record = data.minTaskRecords.find(
-        (r) => r.studentId === studentId && r.minTaskId === minTaskId
-      );
+      const record = minTaskRecordIndex.get(`${studentId}|${minTaskId}`);
       return record?.questionsDone ?? 0;
     },
-    [data.minTaskRecords]
+    [minTaskRecordIndex]
   );
 
   const exportToJson = useCallback(() => JSON.stringify(data, null, 2), [data]);
