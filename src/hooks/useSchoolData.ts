@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { SchoolData, Student, Turma, Activity, AttendanceRecord, ActivityRecord, ClassRecord, MinTask, MinTaskRecord } from "@/types";
+import { parseSchoolDataCsv, serializeSchoolDataToCsv } from "@/lib/dataTransfer";
 
 const STORAGE_KEY = "school_control_data";
 
@@ -322,6 +323,22 @@ export function useSchoolData() {
     [data.minTaskRecords]
   );
 
+  const exportToJson = useCallback(() => JSON.stringify(data, null, 2), [data]);
+
+  const exportToCsv = useCallback(() => serializeSchoolDataToCsv(data), [data]);
+
+  const importFromJson = useCallback((rawJson: string) => {
+    const parsed = JSON.parse(rawJson);
+    const normalized = normalizeSchoolData(parsed);
+    setData(normalized);
+  }, []);
+
+  const importFromCsv = useCallback((rawCsv: string) => {
+    const parsed = parseSchoolDataCsv(rawCsv);
+    const normalized = normalizeSchoolData(parsed);
+    setData(normalized);
+  }, []);
+
   return {
     data,
     addStudent,
@@ -342,5 +359,9 @@ export function useSchoolData() {
     removeMinTask,
     setMinTaskRecord,
     getMinTaskRecord,
+    exportToJson,
+    exportToCsv,
+    importFromJson,
+    importFromCsv,
   };
 }

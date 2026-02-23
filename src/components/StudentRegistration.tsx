@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SchoolData, Turma } from "@/types";
-import { UserPlus, Trash2, GraduationCap, BookOpen, Upload } from "lucide-react";
+import { UserPlus, Trash2, GraduationCap, BookOpen, Upload, Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { CsvImportModal } from "@/components/CsvImportModal";
 
 interface Props {
@@ -9,15 +9,31 @@ interface Props {
   removeStudent: (id: string) => void;
   addTurma: (name: string) => Turma | null;
   removeTurma: (id: string) => void;
+  exportToJson: () => string;
+  exportToCsv: () => string;
+  importFromJson: (rawJson: string) => void;
+  importFromCsv: (rawCsv: string) => void;
 }
 
-export function StudentRegistration({ data, addStudent, removeStudent, addTurma, removeTurma }: Props) {
+export function StudentRegistration({
+  data,
+  addStudent,
+  removeStudent,
+  addTurma,
+  removeTurma,
+  exportToJson,
+  exportToCsv,
+  importFromJson,
+  importFromCsv,
+}: Props) {
   const [studentName, setStudentName] = useState("");
   const [selectedTurmaId, setSelectedTurmaId] = useState("");
   const [newTurmaName, setNewTurmaName] = useState("");
   const [turmaError, setTurmaError] = useState("");
   const [filterTurma, setFilterTurma] = useState("all");
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [dataTransferMessage, setDataTransferMessage] = useState("");
+  const restoreInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +58,37 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
     ? data.students
     : data.students.filter((s) => s.turma === filterTurma);
 
-  const turmaNames = Array.from(new Set(data.students.map((s) => s.turma)));
+
+  const downloadBackupFile = (content: string, extension: "json" | "csv", type: string) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const now = new Date().toISOString().slice(0, 10);
+    link.download = `diario-professor-backup-${now}.${extension}`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestoreBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      if (file.name.toLowerCase().endsWith(".json")) {
+        importFromJson(content);
+      } else if (file.name.toLowerCase().endsWith(".csv")) {
+        importFromCsv(content);
+      } else {
+        throw new Error("Formato não suportado. Use arquivos .json ou .csv.");
+      }
+      setDataTransferMessage("Backup restaurado com sucesso.");
+    } catch {
+      setDataTransferMessage("Não foi possível restaurar o backup. Verifique o arquivo selecionado.");
+    }
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -55,6 +101,60 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
         />
       )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="section-card md:col-span-2">
+          <div className="section-card-header">
+            <span className="section-card-title flex items-center gap-2">
+              <Download size={15} />
+              Backup e Restauração
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 p-4">
+            <button
+              type="button"
+              onClick={() => {
+                downloadBackupFile(exportToJson(), "json", "application/json");
+                setDataTransferMessage("Backup JSON exportado com sucesso.");
+              }}
+              className="flex items-center gap-1.5 rounded border border-border bg-background px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80"
+            >
+              <FileJson size={12} />
+              Exportar JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                downloadBackupFile(exportToCsv(), "csv", "text/csv;charset=utf-8");
+                setDataTransferMessage("Backup CSV exportado com sucesso.");
+              }}
+              className="flex items-center gap-1.5 rounded border border-border bg-background px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80"
+            >
+              <FileSpreadsheet size={12} />
+              Exportar CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => restoreInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors"
+              style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+            >
+              <Upload size={12} />
+              Restaurar backup
+            </button>
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept=".json,.csv"
+              className="hidden"
+              onChange={handleRestoreBackup}
+            />
+            {dataTransferMessage && (
+              <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                {dataTransferMessage}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Add Turma */}
         <div className="section-card">
           <div className="section-card-header">
