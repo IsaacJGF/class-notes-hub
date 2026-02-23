@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { useSchoolData } from "@/hooks/useSchoolData";
+import { useTheme } from "@/hooks/useTheme";
 import { StudentRegistration } from "@/components/StudentRegistration";
 import { SummaryTab } from "@/components/SummaryTab";
 import { TurmaTab } from "@/components/TurmaTab";
-import { GraduationCap, LayoutDashboard, Users } from "lucide-react";
+import { DashboardTab } from "@/components/DashboardTab";
+import { GraduationCap, LayoutDashboard, Users, Sun, Moon, Home } from "lucide-react";
 
-type TabId = "cadastro" | "resumo" | string; // string = turma id
+type TabId = "dashboard" | "cadastro" | "resumo" | string;
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<TabId>("cadastro");
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const school = useSchoolData();
+  const { theme, toggleTheme } = useTheme();
   const sortedTurmas = [...school.data.turmas].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
   const tabs = [
+    { id: "dashboard", label: "Dashboard", icon: <Home size={14} /> },
     { id: "cadastro", label: "Cadastro", icon: <Users size={14} /> },
     { id: "resumo", label: "Resumo", icon: <LayoutDashboard size={14} /> },
     ...sortedTurmas.map((t) => ({
@@ -37,7 +41,7 @@ const Index = () => {
           alt="Ícone Diário do Professor"
           className="h-8 w-8 rounded-md border border-white/20"
         />
-        <div>
+        <div className="flex-1">
           <h1 className="text-base font-bold leading-tight" style={{ color: "hsl(var(--primary-foreground))" }}>
             Diário do Professor
           </h1>
@@ -45,6 +49,19 @@ const Index = () => {
             Controle de chamada e atividades
           </p>
         </div>
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all hover:opacity-80"
+          style={{
+            backgroundColor: "hsl(var(--primary-foreground) / 0.15)",
+            color: "hsl(var(--primary-foreground))",
+          }}
+          title={theme === "light" ? "Modo escuro" : "Modo claro"}
+          aria-label={theme === "light" ? "Ativar modo escuro" : "Ativar modo claro"}
+        >
+          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+          {theme === "light" ? "Escuro" : "Claro"}
+        </button>
       </header>
 
       {/* Tab bar */}
@@ -81,6 +98,9 @@ const Index = () => {
 
       {/* Content */}
       <main className="flex-1 overflow-auto">
+        {activeTab === "dashboard" && (
+          <DashboardTab data={school.data} />
+        )}
         {activeTab === "cadastro" && (
           <StudentRegistration
             data={school.data}
