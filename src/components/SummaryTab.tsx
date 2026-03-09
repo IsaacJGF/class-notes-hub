@@ -648,9 +648,15 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                               const status = getActivityStatus(student.id, a.id);
                               return (
                                 <td key={a.id} className="text-center">
-                                  {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} className="mx-auto" />}
-                                  {status === false && <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} className="mx-auto" />}
-                                  {status === null && <Circle size={14} className="mx-auto opacity-20" />}
+                                  <button
+                                    onClick={() => toggleActivityRecord(student.id, a.id)}
+                                    className="mx-auto flex items-center justify-center rounded p-0.5 hover:bg-muted transition-colors cursor-pointer"
+                                    title={status === true ? "Feito → Pendente" : "Pendente → Feito"}
+                                  >
+                                    {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />}
+                                    {status === false && <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />}
+                                    {status === null && <Circle size={14} className="opacity-20" />}
+                                  </button>
                                 </td>
                               );
                             })}
