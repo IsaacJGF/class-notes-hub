@@ -7,6 +7,10 @@ import { ChartsSubpage } from "@/components/ChartsSubpage";
 
 interface Props {
   data: SchoolData;
+  toggleAttendance: (studentId: string, date: string) => void;
+  toggleActivityRecord: (studentId: string, activityId: string) => void;
+  setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
+  getMinTaskRecord: (studentId: string, minTaskId: string) => number;
 }
 
 type MainView = "tabelas" | "graficos";
