@@ -91,7 +91,13 @@ const Index = () => {
           />
         )}
         {activeTab === "resumo" && (
-          <SummaryTab data={school.data} />
+          <SummaryTab
+            data={school.data}
+            toggleAttendance={school.toggleAttendance}
+            toggleActivityRecord={school.toggleActivityRecord}
+            setMinTaskRecord={school.setMinTaskRecord}
+            getMinTaskRecord={school.getMinTaskRecord}
+          />
         )}
         {currentTurma && (
           <TurmaTab
