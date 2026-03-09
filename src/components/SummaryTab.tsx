@@ -15,7 +15,7 @@ interface Props {
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMinTaskRecord, getMinTaskRecord }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("all");
   const [filterDateFrom, setFilterDateFrom] = useState("");
