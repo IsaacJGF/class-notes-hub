@@ -7,11 +7,15 @@ import { ChartsSubpage } from "@/components/ChartsSubpage";
 
 interface Props {
   data: SchoolData;
+  toggleAttendance: (studentId: string, date: string) => void;
+  toggleActivityRecord: (studentId: string, activityId: string) => void;
+  setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
+  getMinTaskRecord: (studentId: string, minTaskId: string) => number;
 }
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMinTaskRecord, getMinTaskRecord }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("all");
   const [filterDateFrom, setFilterDateFrom] = useState("");
@@ -521,9 +525,15 @@ export function SummaryTab({ data }: Props) {
                               const status = getAttendanceStatus(student.id, d);
                               return (
                                 <td key={d} className="text-center">
-                                  {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--present))" }} className="mx-auto" />}
-                                  {status === false && <XCircle size={16} style={{ color: "hsl(var(--absent))" }} className="mx-auto" />}
-                                  {status === null && <Circle size={14} className="mx-auto opacity-20" />}
+                                  <button
+                                    onClick={() => toggleAttendance(student.id, d)}
+                                    className="mx-auto flex items-center justify-center rounded p-0.5 hover:bg-muted transition-colors cursor-pointer"
+                                    title={status === true ? "Presente → Falta" : status === false ? "Falta → Presente" : "Marcar presença"}
+                                  >
+                                    {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--present))" }} />}
+                                    {status === false && <XCircle size={16} style={{ color: "hsl(var(--absent))" }} />}
+                                    {status === null && <Circle size={14} className="opacity-20" />}
+                                  </button>
                                 </td>
                               );
                             })}
@@ -638,9 +648,15 @@ export function SummaryTab({ data }: Props) {
                               const status = getActivityStatus(student.id, a.id);
                               return (
                                 <td key={a.id} className="text-center">
-                                  {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} className="mx-auto" />}
-                                  {status === false && <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} className="mx-auto" />}
-                                  {status === null && <Circle size={14} className="mx-auto opacity-20" />}
+                                  <button
+                                    onClick={() => toggleActivityRecord(student.id, a.id)}
+                                    className="mx-auto flex items-center justify-center rounded p-0.5 hover:bg-muted transition-colors cursor-pointer"
+                                    title={status === true ? "Feito → Pendente" : "Pendente → Feito"}
+                                  >
+                                    {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />}
+                                    {status === false && <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />}
+                                    {status === null && <Circle size={14} className="opacity-20" />}
+                                  </button>
                                 </td>
                               );
                             })}
@@ -669,20 +685,21 @@ export function SummaryTab({ data }: Props) {
                     Nenhum aluno encontrado.
                   </div>
                 ) : (() => {
+                  const allFilteredMinTasks = (() => {
+                    let tasks = data.minTasks || [];
+                    if (filterTurma !== "all") {
+                      const turma = data.turmas.find((t) => t.name === filterTurma);
+                      if (turma) tasks = tasks.filter((t) => t.turmaId === turma.id);
+                    }
+                    if (filterDateFrom) tasks = tasks.filter((t) => t.date >= filterDateFrom);
+                    if (filterDateTo) tasks = tasks.filter((t) => t.date <= filterDateTo);
+                    return tasks.sort((a, b) => a.date.localeCompare(b.date));
+                  })();
+
                   const studentMinTasks = (studentTurmaName: string) => {
                     const turma = data.turmas.find((t) => t.name === studentTurmaName);
                     if (!turma) return [];
-                    let tasks = (data.minTasks || []).filter((t) => t.turmaId === turma.id);
-                    if (filterDateFrom) tasks = tasks.filter((t) => t.date >= filterDateFrom);
-                    if (filterDateTo) tasks = tasks.filter((t) => t.date <= filterDateTo);
-                    return tasks;
-                  };
-
-                  const getRecord = (studentId: string, minTaskId: string) => {
-                    const r = (data.minTaskRecords || []).find(
-                      (r) => r.studentId === studentId && r.minTaskId === minTaskId
-                    );
-                    return r?.questionsDone ?? 0;
+                    return allFilteredMinTasks.filter((t) => t.turmaId === turma.id);
                   };
 
                   return (
@@ -694,12 +711,18 @@ export function SummaryTab({ data }: Props) {
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Feitas</th>
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Possível</th>
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
+                          {allFilteredMinTasks.map((t) => (
+                            <th key={t.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
+                              <div>{formatDate(t.date)}</div>
+                              <div className="truncate max-w-16 text-xs opacity-80" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {filteredStudents.map((student) => {
                           const tasks = studentMinTasks(student.turma);
-                          const totalDone = tasks.reduce((sum, t) => sum + getRecord(student.id, t.id), 0);
+                          const totalDone = tasks.reduce((sum, t) => sum + getMinTaskRecord(student.id, t.id), 0);
                           const totalPossible = tasks.reduce((sum, t) => sum + t.totalQuestions, 0);
                           const pct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : null;
                           return (
@@ -736,6 +759,29 @@ export function SummaryTab({ data }: Props) {
                                   <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>—</span>
                                 )}
                               </td>
+                              {allFilteredMinTasks.map((t) => {
+                                const turma = data.turmas.find((tu) => tu.name === student.turma);
+                                if (turma?.id !== t.turmaId) {
+                                  return <td key={t.id} className="text-center text-xs opacity-30">—</td>;
+                                }
+                                const val = getMinTaskRecord(student.id, t.id);
+                                return (
+                                  <td key={t.id} className="text-center">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={t.totalQuestions}
+                                      value={val}
+                                      onChange={(e) => {
+                                        const v = Math.max(0, Math.min(t.totalQuestions, parseInt(e.target.value) || 0));
+                                        setMinTaskRecord(student.id, t.id, v);
+                                      }}
+                                      className="w-12 rounded border border-border bg-background px-1 py-0.5 text-center text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                                    />
+                                    <span className="text-xs ml-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>/{t.totalQuestions}</span>
+                                  </td>
+                                );
+                              })}
                             </tr>
                           );
                         })}
