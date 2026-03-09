@@ -525,9 +525,15 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                               const status = getAttendanceStatus(student.id, d);
                               return (
                                 <td key={d} className="text-center">
-                                  {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--present))" }} className="mx-auto" />}
-                                  {status === false && <XCircle size={16} style={{ color: "hsl(var(--absent))" }} className="mx-auto" />}
-                                  {status === null && <Circle size={14} className="mx-auto opacity-20" />}
+                                  <button
+                                    onClick={() => toggleAttendance(student.id, d)}
+                                    className="mx-auto flex items-center justify-center rounded p-0.5 hover:bg-muted transition-colors cursor-pointer"
+                                    title={status === true ? "Presente → Falta" : status === false ? "Falta → Presente" : "Marcar presença"}
+                                  >
+                                    {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--present))" }} />}
+                                    {status === false && <XCircle size={16} style={{ color: "hsl(var(--absent))" }} />}
+                                    {status === null && <Circle size={14} className="opacity-20" />}
+                                  </button>
                                 </td>
                               );
                             })}
