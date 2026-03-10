@@ -25,6 +25,30 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const [attendanceThreshold, setAttendanceThreshold] = useState(() => {
+    const saved = localStorage.getItem("alert_attendance_threshold");
+    return saved ? parseInt(saved) : 75;
+  });
+  const [activityThreshold, setActivityThreshold] = useState(() => {
+    const saved = localStorage.getItem("alert_activity_threshold");
+    return saved ? parseInt(saved) : 50;
+  });
+  const [minTaskThreshold, setMinTaskThreshold] = useState(() => {
+    const saved = localStorage.getItem("alert_mintask_threshold");
+    return saved ? parseInt(saved) : 50;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("alert_attendance_threshold", String(attendanceThreshold));
+  }, [attendanceThreshold]);
+  useEffect(() => {
+    localStorage.setItem("alert_activity_threshold", String(activityThreshold));
+  }, [activityThreshold]);
+  useEffect(() => {
+    localStorage.setItem("alert_mintask_threshold", String(minTaskThreshold));
+  }, [minTaskThreshold]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
