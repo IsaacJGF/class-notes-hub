@@ -761,7 +761,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                         const pct = total > 0 ? Math.round((done / total) * 100) : null;
 
                         return (
-                          <tr key={student.id}>
+                          <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
                             <td
                               className="font-medium whitespace-nowrap sticky left-0 z-10"
                               style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
