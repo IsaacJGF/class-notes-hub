@@ -893,9 +893,12 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                             <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
                               <td
                                 className="font-medium whitespace-nowrap sticky left-0 z-10"
-                                style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                                style={{ backgroundColor: alertStudentIds.has(student.id) ? "hsl(var(--warning-light))" : "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                               >
-                                {student.name}
+                                <span className="flex items-center gap-1">
+                                  {alertStudentIds.has(student.id) && <AlertTriangle size={12} style={{ color: "hsl(var(--warning))" }} className="shrink-0" />}
+                                  {student.name}
+                                </span>
                               </td>
                               <td>
                                 <span
