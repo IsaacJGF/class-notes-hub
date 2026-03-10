@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData } from "@/types";
-import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
@@ -25,6 +25,30 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const [attendanceThreshold, setAttendanceThreshold] = useState(() => {
+    const saved = localStorage.getItem("alert_attendance_threshold");
+    return saved ? parseInt(saved) : 75;
+  });
+  const [activityThreshold, setActivityThreshold] = useState(() => {
+    const saved = localStorage.getItem("alert_activity_threshold");
+    return saved ? parseInt(saved) : 50;
+  });
+  const [minTaskThreshold, setMinTaskThreshold] = useState(() => {
+    const saved = localStorage.getItem("alert_mintask_threshold");
+    return saved ? parseInt(saved) : 50;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("alert_attendance_threshold", String(attendanceThreshold));
+  }, [attendanceThreshold]);
+  useEffect(() => {
+    localStorage.setItem("alert_activity_threshold", String(activityThreshold));
+  }, [activityThreshold]);
+  useEffect(() => {
+    localStorage.setItem("alert_mintask_threshold", String(minTaskThreshold));
+  }, [minTaskThreshold]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -273,6 +297,58 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
     XLSX.writeFile(wb, "resumo_atividades.xlsx");
   };
 
+  // ---- Alerts computation ----
+  type AlertItem = { studentId: string; studentName: string; turma: string; type: "attendance" | "activity" | "mintask"; pct: number; detail: string };
+
+  const alerts = useMemo<AlertItem[]>(() => {
+    const result: AlertItem[] = [];
+    for (const student of allFilteredStudents) {
+      // Attendance
+      const { present, total } = getAttendanceSummary(student.id);
+      if (total > 0) {
+        const attPct = Math.round((present / total) * 100);
+        if (attPct < attendanceThreshold) {
+          result.push({ studentId: student.id, studentName: student.name, turma: student.turma, type: "attendance", pct: attPct, detail: `${present}/${total} presenças (${attPct}%)` });
+        }
+      }
+      // Activities
+      const studentActivities = filteredActivities.filter((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        return turma?.id === a.turmaId;
+      });
+      if (studentActivities.length > 0) {
+        const done = studentActivities.filter((a) => {
+          const r = data.activityRecords.find((r) => r.studentId === student.id && r.activityId === a.id);
+          return r?.done;
+        }).length;
+        const actPct = Math.round((done / studentActivities.length) * 100);
+        if (actPct < activityThreshold) {
+          result.push({ studentId: student.id, studentName: student.name, turma: student.turma, type: "activity", pct: actPct, detail: `${done}/${studentActivities.length} atividades (${actPct}%)` });
+        }
+      }
+      // MinTasks
+      const turma = data.turmas.find((t) => t.name === student.turma);
+      if (turma) {
+        const tasks = (data.minTasks || []).filter((t) => t.turmaId === turma.id);
+        if (tasks.length > 0) {
+          const totalDone = tasks.reduce((sum, t) => sum + getMinTaskRecord(student.id, t.id), 0);
+          const totalPossible = tasks.reduce((sum, t) => sum + t.totalQuestions, 0);
+          if (totalPossible > 0) {
+            const mtPct = Math.round((totalDone / totalPossible) * 100);
+            if (mtPct < minTaskThreshold) {
+              result.push({ studentId: student.id, studentName: student.name, turma: student.turma, type: "mintask", pct: mtPct, detail: `${totalDone}/${totalPossible} questões (${mtPct}%)` });
+            }
+          }
+        }
+      }
+    }
+    return result.sort((a, b) => a.pct - b.pct);
+  }, [allFilteredStudents, attendanceDates, filteredActivities, data, attendanceThreshold, activityThreshold, minTaskThreshold]);
+
+  const alertStudentIds = useMemo(() => new Set(alerts.map((a) => a.studentId)), [alerts]);
+
+  const alertTypeLabels: Record<string, string> = { attendance: "Frequência", activity: "Atividades", mintask: "Tarefa Mínima" };
+
   return (
     <div className="space-y-4 p-4">
       {/* Filters */}
@@ -327,6 +403,88 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
           </button>
         </div>
       </div>
+
+      {/* Alerts Panel */}
+      {alerts.length > 0 && (
+        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--warning-light))" }}>
+          <button
+            onClick={() => setAlertsOpen(!alertsOpen)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} style={{ color: "hsl(var(--warning))" }} />
+              <span className="text-sm font-semibold" style={{ color: "hsl(var(--warning-foreground))" }}>
+                {alerts.length} alerta(s) pedagógico(s)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowAlertSettings(!showAlertSettings); }}
+                className="rounded p-1 hover:opacity-70 transition-colors"
+                title="Configurar limites"
+              >
+                <Settings2 size={14} style={{ color: "hsl(var(--warning-foreground))" }} />
+              </button>
+              {alertsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
+
+          {showAlertSettings && (
+            <div className="border-t px-4 py-3 flex flex-wrap gap-4" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--card))" }}>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>Frequência mínima</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100} value={attendanceThreshold}
+                    onChange={(e) => setAttendanceThreshold(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>%</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>Atividades mínimas</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100} value={activityThreshold}
+                    onChange={(e) => setActivityThreshold(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>%</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>Tarefa Mínima mínima</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100} value={minTaskThreshold}
+                    onChange={(e) => setMinTaskThreshold(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>%</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {alertsOpen && (
+            <div className="border-t px-4 py-2 max-h-48 overflow-auto" style={{ borderColor: "hsl(var(--warning-border))" }}>
+              <div className="space-y-1">
+                {alerts.map((alert, i) => (
+                  <div key={`${alert.studentId}-${alert.type}-${i}`} className="flex items-center gap-2 py-1 text-sm">
+                    <AlertTriangle size={12} style={{ color: "hsl(var(--warning))" }} className="shrink-0" />
+                    <span className="font-medium" style={{ color: "hsl(var(--foreground))" }}>{alert.studentName}</span>
+                    <span className="rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}>{alert.turma}</span>
+                    <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>·</span>
+                    <span className="text-xs font-semibold" style={{ color: "hsl(var(--warning-foreground))" }}>{alertTypeLabels[alert.type]}</span>
+                    <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{alert.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search + Main sub-nav */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -481,12 +639,15 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                         const { present, total } = getAttendanceSummary(student.id);
                         const pct = total > 0 ? Math.round((present / total) * 100) : null;
                         return (
-                          <tr key={student.id}>
+                          <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
                             <td
                               className="font-medium whitespace-nowrap sticky left-0 z-10"
-                              style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                              style={{ backgroundColor: alertStudentIds.has(student.id) ? "hsl(var(--warning-light))" : "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                             >
-                              {student.name}
+                              <span className="flex items-center gap-1">
+                                {alertStudentIds.has(student.id) && <AlertTriangle size={12} style={{ color: "hsl(var(--warning))" }} className="shrink-0" />}
+                                {student.name}
+                              </span>
                             </td>
                             <td>
                               <span
@@ -603,12 +764,15 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                         const pct = total > 0 ? Math.round((done / total) * 100) : null;
 
                         return (
-                          <tr key={student.id}>
+                          <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
                             <td
                               className="font-medium whitespace-nowrap sticky left-0 z-10"
-                              style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                              style={{ backgroundColor: alertStudentIds.has(student.id) ? "hsl(var(--warning-light))" : "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                             >
-                              {student.name}
+                              <span className="flex items-center gap-1">
+                                {alertStudentIds.has(student.id) && <AlertTriangle size={12} style={{ color: "hsl(var(--warning))" }} className="shrink-0" />}
+                                {student.name}
+                              </span>
                             </td>
                             <td>
                               <span
@@ -726,12 +890,15 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                           const totalPossible = tasks.reduce((sum, t) => sum + t.totalQuestions, 0);
                           const pct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : null;
                           return (
-                            <tr key={student.id}>
+                            <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
                               <td
                                 className="font-medium whitespace-nowrap sticky left-0 z-10"
-                                style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
+                                style={{ backgroundColor: alertStudentIds.has(student.id) ? "hsl(var(--warning-light))" : "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
                               >
-                                {student.name}
+                                <span className="flex items-center gap-1">
+                                  {alertStudentIds.has(student.id) && <AlertTriangle size={12} style={{ color: "hsl(var(--warning))" }} className="shrink-0" />}
+                                  {student.name}
+                                </span>
                               </td>
                               <td>
                                 <span

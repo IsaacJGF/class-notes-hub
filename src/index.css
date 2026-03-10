@@ -61,6 +61,11 @@ All colors MUST be HSL.
     --not-done-foreground: 0 0% 100%;
     --not-done-light: 35 70% 93%;
 
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 20%;
+    --warning-light: 38 80% 94%;
+    --warning-border: 38 70% 75%;
+
     --table-header: 220 65% 22%;
     --table-header-foreground: 0 0% 98%;
     --table-stripe: 215 20% 97%;
