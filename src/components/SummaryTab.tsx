@@ -884,7 +884,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                           const totalPossible = tasks.reduce((sum, t) => sum + t.totalQuestions, 0);
                           const pct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : null;
                           return (
-                            <tr key={student.id}>
+                            <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
                               <td
                                 className="font-medium whitespace-nowrap sticky left-0 z-10"
                                 style={{ backgroundColor: "hsl(var(--card))", width: studentNameColWidth, minWidth: studentNameColWidth }}
