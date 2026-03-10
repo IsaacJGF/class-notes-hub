@@ -25,7 +25,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [attendanceThreshold, setAttendanceThreshold] = useState(() => {
     const saved = localStorage.getItem("alert_attendance_threshold");
