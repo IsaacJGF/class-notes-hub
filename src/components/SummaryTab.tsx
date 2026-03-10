@@ -297,6 +297,58 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
     XLSX.writeFile(wb, "resumo_atividades.xlsx");
   };
 
+  // ---- Alerts computation ----
+  type AlertItem = { studentId: string; studentName: string; turma: string; type: "attendance" | "activity" | "mintask"; pct: number; detail: string };
+
+  const alerts = useMemo<AlertItem[]>(() => {
+    const result: AlertItem[] = [];
+    for (const student of allFilteredStudents) {
+      // Attendance
+      const { present, total } = getAttendanceSummary(student.id);
+      if (total > 0) {
+        const attPct = Math.round((present / total) * 100);
+        if (attPct < attendanceThreshold) {
+          result.push({ studentId: student.id, studentName: student.name, turma: student.turma, type: "attendance", pct: attPct, detail: `${present}/${total} presenças (${attPct}%)` });
+        }
+      }
+      // Activities
+      const studentActivities = filteredActivities.filter((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        return turma?.id === a.turmaId;
+      });
+      if (studentActivities.length > 0) {
+        const done = studentActivities.filter((a) => {
+          const r = data.activityRecords.find((r) => r.studentId === student.id && r.activityId === a.id);
+          return r?.done;
+        }).length;
+        const actPct = Math.round((done / studentActivities.length) * 100);
+        if (actPct < activityThreshold) {
+          result.push({ studentId: student.id, studentName: student.name, turma: student.turma, type: "activity", pct: actPct, detail: `${done}/${studentActivities.length} atividades (${actPct}%)` });
+        }
+      }
+      // MinTasks
+      const turma = data.turmas.find((t) => t.name === student.turma);
+      if (turma) {
+        const tasks = (data.minTasks || []).filter((t) => t.turmaId === turma.id);
+        if (tasks.length > 0) {
+          const totalDone = tasks.reduce((sum, t) => sum + getMinTaskRecord(student.id, t.id), 0);
+          const totalPossible = tasks.reduce((sum, t) => sum + t.totalQuestions, 0);
+          if (totalPossible > 0) {
+            const mtPct = Math.round((totalDone / totalPossible) * 100);
+            if (mtPct < minTaskThreshold) {
+              result.push({ studentId: student.id, studentName: student.name, turma: student.turma, type: "mintask", pct: mtPct, detail: `${totalDone}/${totalPossible} questões (${mtPct}%)` });
+            }
+          }
+        }
+      }
+    }
+    return result.sort((a, b) => a.pct - b.pct);
+  }, [allFilteredStudents, attendanceDates, filteredActivities, data, attendanceThreshold, activityThreshold, minTaskThreshold]);
+
+  const alertStudentIds = useMemo(() => new Set(alerts.map((a) => a.studentId)), [alerts]);
+
+  const alertTypeLabels: Record<string, string> = { attendance: "Frequência", activity: "Atividades", mintask: "Tarefa Mínima" };
+
   return (
     <div className="space-y-4 p-4">
       {/* Filters */}
