@@ -404,8 +404,8 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         </div>
       </div>
 
-      {/* Alerts Panel */}
-      {alerts.length > 0 && (
+      {/* Alerts Panel — only when a specific turma is selected */}
+      {filterTurma !== "all" && alerts.length > 0 && (
         <div className="rounded-lg border overflow-hidden" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--warning-light))" }}>
           <button
             onClick={() => setAlertsOpen(!alertsOpen)}
