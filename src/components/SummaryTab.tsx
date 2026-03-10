@@ -404,6 +404,88 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         </div>
       </div>
 
+      {/* Alerts Panel */}
+      {alerts.length > 0 && (
+        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--warning-light))" }}>
+          <button
+            onClick={() => setAlertsOpen(!alertsOpen)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} style={{ color: "hsl(var(--warning))" }} />
+              <span className="text-sm font-semibold" style={{ color: "hsl(var(--warning-foreground))" }}>
+                {alerts.length} alerta(s) pedagógico(s)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowAlertSettings(!showAlertSettings); }}
+                className="rounded p-1 hover:opacity-70 transition-colors"
+                title="Configurar limites"
+              >
+                <Settings2 size={14} style={{ color: "hsl(var(--warning-foreground))" }} />
+              </button>
+              {alertsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
+
+          {showAlertSettings && (
+            <div className="border-t px-4 py-3 flex flex-wrap gap-4" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--card))" }}>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>Frequência mínima</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100} value={attendanceThreshold}
+                    onChange={(e) => setAttendanceThreshold(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>%</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>Atividades mínimas</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100} value={activityThreshold}
+                    onChange={(e) => setActivityThreshold(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>%</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>Tarefa Mínima mínima</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100} value={minTaskThreshold}
+                    onChange={(e) => setMinTaskThreshold(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>%</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {alertsOpen && (
+            <div className="border-t px-4 py-2 max-h-48 overflow-auto" style={{ borderColor: "hsl(var(--warning-border))" }}>
+              <div className="space-y-1">
+                {alerts.map((alert, i) => (
+                  <div key={`${alert.studentId}-${alert.type}-${i}`} className="flex items-center gap-2 py-1 text-sm">
+                    <AlertTriangle size={12} style={{ color: "hsl(var(--warning))" }} className="shrink-0" />
+                    <span className="font-medium" style={{ color: "hsl(var(--foreground))" }}>{alert.studentName}</span>
+                    <span className="rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}>{alert.turma}</span>
+                    <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>·</span>
+                    <span className="text-xs font-semibold" style={{ color: "hsl(var(--warning-foreground))" }}>{alertTypeLabels[alert.type]}</span>
+                    <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{alert.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Search + Main sub-nav */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 rounded-lg border border-border p-1" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content" }}>
