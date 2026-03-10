@@ -25,7 +25,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [attendanceThreshold, setAttendanceThreshold] = useState(() => {
     const saved = localStorage.getItem("alert_attendance_threshold");
@@ -404,8 +404,8 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         </div>
       </div>
 
-      {/* Alerts Panel */}
-      {alerts.length > 0 && (
+      {/* Alerts Panel — only when a specific turma is selected */}
+      {filterTurma !== "all" && alerts.length > 0 && (
         <div className="rounded-lg border overflow-hidden" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--warning-light))" }}>
           <button
             onClick={() => setAlertsOpen(!alertsOpen)}
