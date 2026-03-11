@@ -76,9 +76,9 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   }, [showSearch]);
 
   const allFilteredStudents = useMemo(() => {
-    const students = filterTurma === "all"
-      ? data.students
-      : data.students.filter((s) => s.turma === filterTurma);
+    const students = filterTurma
+      ? data.students.filter((s) => s.turma === filterTurma)
+      : data.students;
 
     return [...students].sort((a, b) => {
       const comparison = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
