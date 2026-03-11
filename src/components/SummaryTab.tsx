@@ -111,7 +111,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
 
   const filteredActivities = useMemo(() => {
     let acts = data.activities;
-    if (filterTurma !== "all") {
+    if (filterTurma) {
       const turma = data.turmas.find((t) => t.name === filterTurma);
       if (turma) acts = acts.filter((a) => a.turmaId === turma.id);
     }
