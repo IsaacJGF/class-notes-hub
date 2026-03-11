@@ -655,41 +655,50 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
       {mainView === "tabelas" && (
         <>
           {/* Toggle View */}
-          <div className="flex gap-2">
+           <div className="flex items-center gap-2 flex-wrap">
+             <div className="flex gap-2">
+              <button
+                onClick={() => setActiveView("attendance")}
+                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                style={
+                  activeView === "attendance"
+                    ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                    : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+                }
+              >
+                Chamada
+              </button>
+              <button
+                onClick={() => setActiveView("activities")}
+                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                style={
+                  activeView === "activities"
+                    ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                    : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+                }
+              >
+                Atividades
+              </button>
+              <button
+                onClick={() => setActiveView("mintasks")}
+                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                style={
+                  activeView === "mintasks"
+                    ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                    : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+                }
+              >
+                Tarefa Mínima
+              </button>
+             </div>
              <button
-              onClick={() => setActiveView("attendance")}
-              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
-              style={
-                activeView === "attendance"
-                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
-              }
-            >
-              Chamada
-            </button>
-            <button
-              onClick={() => setActiveView("activities")}
-              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
-              style={
-                activeView === "activities"
-                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
-              }
-            >
-              Atividades
-            </button>
-            <button
-              onClick={() => setActiveView("mintasks")}
-              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
-              style={
-                activeView === "mintasks"
-                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
-              }
-            >
-              Tarefa Mínima
-            </button>
-          </div>
+               onClick={exportCompleteExcel}
+               className="ml-auto flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80"
+               style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+             >
+               <Download size={14} /> Exportar Completo (Excel)
+             </button>
+           </div>
 
           {/* Attendance Summary Table */}
           {activeView === "attendance" && (
