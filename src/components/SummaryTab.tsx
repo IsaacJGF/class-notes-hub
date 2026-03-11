@@ -1092,5 +1092,6 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         />
       )}
       </>)}
+    </div>
   );
 }
