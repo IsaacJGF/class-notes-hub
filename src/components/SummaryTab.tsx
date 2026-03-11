@@ -17,7 +17,7 @@ type MainView = "tabelas" | "graficos";
 
 export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMinTaskRecord, getMinTaskRecord }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
-  const [filterTurma, setFilterTurma] = useState("all");
+  const [filterTurma, setFilterTurma] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities" | "mintasks">("attendance");
