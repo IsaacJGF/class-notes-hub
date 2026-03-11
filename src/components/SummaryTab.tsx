@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData } from "@/types";
-import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
@@ -17,7 +17,7 @@ type MainView = "tabelas" | "graficos";
 
 export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMinTaskRecord, getMinTaskRecord }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
-  const [filterTurma, setFilterTurma] = useState("all");
+  const [filterTurma, setFilterTurma] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities" | "mintasks">("attendance");
@@ -76,9 +76,9 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   }, [showSearch]);
 
   const allFilteredStudents = useMemo(() => {
-    const students = filterTurma === "all"
-      ? data.students
-      : data.students.filter((s) => s.turma === filterTurma);
+    const students = filterTurma
+      ? data.students.filter((s) => s.turma === filterTurma)
+      : data.students;
 
     return [...students].sort((a, b) => {
       const comparison = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
@@ -111,7 +111,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
 
   const filteredActivities = useMemo(() => {
     let acts = data.activities;
-    if (filterTurma !== "all") {
+    if (filterTurma) {
       const turma = data.turmas.find((t) => t.name === filterTurma);
       if (turma) acts = acts.filter((a) => a.turmaId === turma.id);
     }
@@ -299,7 +299,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
 
   const exportMinTasksExcelSheet = (wb?: XLSX.WorkBook) => {
     let tasks = data.minTasks || [];
-    if (filterTurma !== "all") {
+    if (filterTurma) {
       const turma = data.turmas.find((t) => t.name === filterTurma);
       if (turma) tasks = tasks.filter((t) => t.turmaId === turma.id);
     }
@@ -390,7 +390,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
     // Sheet 3: Tarefa Mínima
     exportMinTasksExcelSheet(wb);
 
-    const turmaLabel = filterTurma === "all" ? "todas_turmas" : filterTurma.replace(/\s+/g, "_");
+    const turmaLabel = filterTurma ? filterTurma.replace(/\s+/g, "_") : "geral";
     XLSX.writeFile(wb, `resumo_completo_${turmaLabel}.xlsx`);
   };
 
@@ -463,7 +463,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
               value={filterTurma}
               onChange={(e) => setFilterTurma(e.target.value)}
             >
-              <option value="all">Todas as turmas</option>
+              <option value="" disabled>Selecione uma turma</option>
               {sortedTurmas.map((t) => (
                 <option key={t.id} value={t.name}>{t.name}</option>
               ))}
@@ -492,17 +492,31 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
             />
           </div>
           <button
-            onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); setFilterTurma("all"); }}
+            onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
             className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
             style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
           >
-            Limpar filtros
+            Limpar datas
           </button>
         </div>
       </div>
 
-      {/* Alerts Panel — only when a specific turma is selected */}
-      {filterTurma !== "all" && alerts.length > 0 && (
+      {/* No turma selected message */}
+      {!filterTurma && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <GraduationCap size={48} style={{ color: "hsl(var(--muted-foreground))" }} className="mb-4 opacity-40" />
+          <p className="text-lg font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>
+            Selecione uma turma para visualizar o resumo
+          </p>
+          <p className="mt-1 text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+            Use o filtro acima para escolher a turma desejada.
+          </p>
+        </div>
+      )}
+
+      {filterTurma && (<>
+      {/* Alerts Panel */}
+      {filterTurma && alerts.length > 0 && (
         <div className="rounded-lg border overflow-hidden" style={{ borderColor: "hsl(var(--warning-border))", backgroundColor: "hsl(var(--warning-light))" }}>
           <button
             onClick={() => setAlertsOpen(!alertsOpen)}
@@ -957,7 +971,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                 ) : (() => {
                   const allFilteredMinTasks = (() => {
                     let tasks = data.minTasks || [];
-                    if (filterTurma !== "all") {
+                    if (filterTurma) {
                       const turma = data.turmas.find((t) => t.name === filterTurma);
                       if (turma) tasks = tasks.filter((t) => t.turmaId === turma.id);
                     }
@@ -1077,6 +1091,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
           filterDateTo={filterDateTo}
         />
       )}
+      </>)}
     </div>
   );
 }
