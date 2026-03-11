@@ -492,14 +492,27 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
             />
           </div>
           <button
-            onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); setFilterTurma("all"); }}
+            onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
             className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
             style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
           >
-            Limpar filtros
+            Limpar datas
           </button>
         </div>
       </div>
+
+      {/* No turma selected message */}
+      {!filterTurma && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <GraduationCap size={48} style={{ color: "hsl(var(--muted-foreground))" }} className="mb-4 opacity-40" />
+          <p className="text-lg font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>
+            Selecione uma turma para visualizar o resumo
+          </p>
+          <p className="mt-1 text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+            Use o filtro acima para escolher a turma desejada.
+          </p>
+        </div>
+      )}
 
       {/* Alerts Panel — only when a specific turma is selected */}
       {filterTurma !== "all" && alerts.length > 0 && (
