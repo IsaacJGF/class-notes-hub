@@ -297,6 +297,103 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
     XLSX.writeFile(wb, "resumo_atividades.xlsx");
   };
 
+  const exportMinTasksExcelSheet = (wb?: XLSX.WorkBook) => {
+    let tasks = data.minTasks || [];
+    if (filterTurma !== "all") {
+      const turma = data.turmas.find((t) => t.name === filterTurma);
+      if (turma) tasks = tasks.filter((t) => t.turmaId === turma.id);
+    }
+    if (filterDateFrom) tasks = tasks.filter((t) => t.date >= filterDateFrom);
+    if (filterDateTo) tasks = tasks.filter((t) => t.date <= filterDateTo);
+    tasks = tasks.sort((a, b) => a.date.localeCompare(b.date));
+
+    const headers = [
+      "Aluno", "Turma", "Total Feitas", "Total Possível", "% Aproveitamento",
+      ...tasks.map((t) => `${formatDate(t.date)} - ${t.name} (/${t.totalQuestions})`),
+    ];
+    const rows = filteredStudents.map((student) => {
+      const turma = data.turmas.find((tu) => tu.name === student.turma);
+      const studentTasks = turma ? tasks.filter((t) => t.turmaId === turma.id) : [];
+      const totalDone = studentTasks.reduce((sum, t) => sum + getMinTaskRecord(student.id, t.id), 0);
+      const totalPossible = studentTasks.reduce((sum, t) => sum + t.totalQuestions, 0);
+      const pct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : "";
+      const taskColumns = tasks.map((t) => {
+        if (turma?.id !== t.turmaId) return "—";
+        return `${getMinTaskRecord(student.id, t.id)}/${t.totalQuestions}`;
+      });
+      return [student.name, student.turma, totalDone, totalPossible, pct !== "" ? `${pct}%` : "", ...taskColumns];
+    });
+    const tableData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(tableData);
+    ws["!cols"] = getColumnWidths(tableData);
+    centerColumnsExceptStudent(ws, tableData);
+
+    if (wb) {
+      XLSX.utils.book_append_sheet(wb, ws, "Tarefa Mínima");
+      return wb;
+    }
+    const newWb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(newWb, ws, "Tarefa Mínima");
+    XLSX.writeFile(newWb, "resumo_tarefa_minima.xlsx");
+  };
+
+  const exportCompleteExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Chamada
+    const attHeaders = ["Aluno", "Turma", "Presença", "Faltas", "% Presença", "Participações", "Part./Aulas", "Pontos Extra", ...attendanceDates.map(formatDate)];
+    const attRows = filteredStudents.map((student) => {
+      const { present, total } = getAttendanceSummary(student.id);
+      const classDatesForStudent = getClassDatesForStudent(student.id, student.turma);
+      const participationCount = getParticipationCount(student.id);
+      const extraPointCount = getExtraPointCount(student.id);
+      const pct = total > 0 ? Math.round((present / total) * 100) : "";
+      const dateColumns = attendanceDates.map((d) => {
+        const s = getAttendanceStatus(student.id, d);
+        return s === true ? "P" : s === false ? "F" : "";
+      });
+      return [student.name, student.turma, present, total - present, pct !== "" ? `${pct}%` : "", participationCount, `${participationCount}/${classDatesForStudent.length}`, extraPointCount, ...dateColumns];
+    });
+    const attData = [attHeaders, ...attRows];
+    const ws1 = XLSX.utils.aoa_to_sheet(attData);
+    ws1["!cols"] = getColumnWidths(attData);
+    centerColumnsExceptStudent(ws1, attData);
+    XLSX.utils.book_append_sheet(wb, ws1, "Chamada");
+
+    // Sheet 2: Atividades
+    const actHeaders = ["Aluno", "Turma", "Entregues", "Pendentes", "% Entrega", ...filteredActivities.map((a) => `${formatDate(a.date)} - ${a.name}`)];
+    const actRows = filteredStudents.map((student) => {
+      const studentActivities = filteredActivities.filter((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        return turma?.id === a.turmaId;
+      });
+      const done = studentActivities.filter((a) => {
+        const r = data.activityRecords.find((r) => r.studentId === student.id && r.activityId === a.id);
+        return r?.done;
+      }).length;
+      const total = studentActivities.length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : "";
+      const actColumns = filteredActivities.map((a) => {
+        const turma = data.turmas.find((t) => t.name === student.turma);
+        if (turma?.id !== a.turmaId) return "—";
+        const s = getActivityStatus(student.id, a.id);
+        return s === true ? "Feito" : s === false ? "Pendente" : "";
+      });
+      return [student.name, student.turma, done, total - done, pct !== "" ? `${pct}%` : "", ...actColumns];
+    });
+    const actData = [actHeaders, ...actRows];
+    const ws2 = XLSX.utils.aoa_to_sheet(actData);
+    ws2["!cols"] = getColumnWidths(actData);
+    centerColumnsExceptStudent(ws2, actData);
+    XLSX.utils.book_append_sheet(wb, ws2, "Atividades");
+
+    // Sheet 3: Tarefa Mínima
+    exportMinTasksExcelSheet(wb);
+
+    const turmaLabel = filterTurma === "all" ? "todas_turmas" : filterTurma.replace(/\s+/g, "_");
+    XLSX.writeFile(wb, `resumo_completo_${turmaLabel}.xlsx`);
+  };
+
   // ---- Alerts computation ----
   type AlertItem = { studentId: string; studentName: string; turma: string; type: "attendance" | "activity" | "mintask"; pct: number; detail: string };
 
@@ -558,41 +655,50 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
       {mainView === "tabelas" && (
         <>
           {/* Toggle View */}
-          <div className="flex gap-2">
+           <div className="flex items-center gap-2 flex-wrap">
+             <div className="flex gap-2">
+              <button
+                onClick={() => setActiveView("attendance")}
+                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                style={
+                  activeView === "attendance"
+                    ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                    : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+                }
+              >
+                Chamada
+              </button>
+              <button
+                onClick={() => setActiveView("activities")}
+                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                style={
+                  activeView === "activities"
+                    ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                    : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+                }
+              >
+                Atividades
+              </button>
+              <button
+                onClick={() => setActiveView("mintasks")}
+                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                style={
+                  activeView === "mintasks"
+                    ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
+                    : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
+                }
+              >
+                Tarefa Mínima
+              </button>
+             </div>
              <button
-              onClick={() => setActiveView("attendance")}
-              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
-              style={
-                activeView === "attendance"
-                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
-              }
-            >
-              Chamada
-            </button>
-            <button
-              onClick={() => setActiveView("activities")}
-              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
-              style={
-                activeView === "activities"
-                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
-              }
-            >
-              Atividades
-            </button>
-            <button
-              onClick={() => setActiveView("mintasks")}
-              className="rounded px-4 py-2 text-sm font-semibold transition-colors"
-              style={
-                activeView === "mintasks"
-                  ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }
-              }
-            >
-              Tarefa Mínima
-            </button>
-          </div>
+               onClick={exportCompleteExcel}
+               className="ml-auto flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80"
+               style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+             >
+               <Download size={14} /> Exportar Completo (Excel)
+             </button>
+           </div>
 
           {/* Attendance Summary Table */}
           {activeView === "attendance" && (
