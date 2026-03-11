@@ -463,7 +463,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
               value={filterTurma}
               onChange={(e) => setFilterTurma(e.target.value)}
             >
-              <option value="all">Todas as turmas</option>
+              <option value="" disabled>Selecione uma turma</option>
               {sortedTurmas.map((t) => (
                 <option key={t.id} value={t.name}>{t.name}</option>
               ))}
