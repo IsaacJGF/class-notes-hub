@@ -970,7 +970,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                 ) : (() => {
                   const allFilteredMinTasks = (() => {
                     let tasks = data.minTasks || [];
-                    if (filterTurma !== "all") {
+                    if (filterTurma) {
                       const turma = data.turmas.find((t) => t.name === filterTurma);
                       if (turma) tasks = tasks.filter((t) => t.turmaId === turma.id);
                     }
