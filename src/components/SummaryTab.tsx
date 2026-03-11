@@ -390,7 +390,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
     // Sheet 3: Tarefa Mínima
     exportMinTasksExcelSheet(wb);
 
-    const turmaLabel = filterTurma === "all" ? "todas_turmas" : filterTurma.replace(/\s+/g, "_");
+    const turmaLabel = filterTurma ? filterTurma.replace(/\s+/g, "_") : "geral";
     XLSX.writeFile(wb, `resumo_completo_${turmaLabel}.xlsx`);
   };
 
