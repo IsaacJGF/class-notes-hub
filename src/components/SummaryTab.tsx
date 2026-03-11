@@ -1091,6 +1091,6 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
           filterDateTo={filterDateTo}
         />
       )}
-    </div>
+      </>)}
   );
 }
