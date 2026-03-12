@@ -613,7 +613,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         </button>
         <button
           onClick={() => setMainView("graficos")}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
+          className="flex items-center gap-1.5 rounded-md px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all min-h-[40px] touch-manipulation whitespace-nowrap"
           style={
             mainView === "graficos"
               ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
