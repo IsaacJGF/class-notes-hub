@@ -598,8 +598,8 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
       )}
 
       {/* Search + Main sub-nav */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-1 rounded-lg border border-border p-1" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex gap-1 rounded-lg border border-border p-1 overflow-x-auto scrollbar-hide" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content", maxWidth: "100%" }}>
         <button
           onClick={() => setMainView("tabelas")}
           className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
