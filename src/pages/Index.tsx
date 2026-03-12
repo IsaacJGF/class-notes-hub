@@ -29,28 +29,28 @@ const Index = () => {
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "hsl(var(--background))" }}>
       {/* Header */}
       <header
-        className="flex items-center gap-3 border-b border-border px-6 py-3 shadow-sm"
+        className="flex items-center gap-2 sm:gap-3 border-b border-border px-3 sm:px-6 py-2 sm:py-3 shadow-sm"
         style={{ backgroundColor: "hsl(var(--primary))" }}
       >
         <img
           src="/app-icon.svg"
           alt="Ícone Diário do Professor"
-          className="h-8 w-8 rounded-md border border-white/20"
+          className="h-7 w-7 sm:h-8 sm:w-8 rounded-md border border-white/20"
         />
         <div>
-          <h1 className="text-base font-bold leading-tight" style={{ color: "hsl(var(--primary-foreground))" }}>
+          <h1 className="text-sm sm:text-base font-bold leading-tight" style={{ color: "hsl(var(--primary-foreground))" }}>
             Diário do Professor
           </h1>
-          <p className="text-xs opacity-70" style={{ color: "hsl(var(--primary-foreground))" }}>
+          <p className="text-[10px] sm:text-xs opacity-70 hidden sm:block" style={{ color: "hsl(var(--primary-foreground))" }}>
             Controle de chamada e atividades
           </p>
         </div>
       </header>
 
-      {/* Tab bar */}
+      {/* Tab bar - scrollable, touch-friendly */}
       <div
-        className="flex gap-0.5 overflow-x-auto border-b border-border px-4 pt-2"
-        style={{ backgroundColor: "hsl(var(--card))" }}
+        className="flex gap-0.5 overflow-x-auto border-b border-border px-2 sm:px-4 pt-1 sm:pt-2 scrollbar-hide"
+        style={{ backgroundColor: "hsl(var(--card))", WebkitOverflowScrolling: "touch" }}
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -58,7 +58,7 @@ const Index = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-t-md px-4 py-2 text-sm font-medium transition-colors"
+              className="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap rounded-t-md px-3 sm:px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors min-h-[44px] touch-manipulation"
               style={
                 isActive
                   ? {

@@ -243,12 +243,60 @@ All colors MUST be HSL.
   }
 
   .section-card-header {
-    @apply flex items-center justify-between border-b border-border px-4 py-3;
+    @apply flex items-center justify-between border-b border-border px-3 sm:px-4 py-2.5 sm:py-3 gap-2 flex-wrap;
     background-color: hsl(var(--secondary));
   }
 
   .section-card-title {
-    @apply text-sm font-semibold;
+    @apply text-xs sm:text-sm font-semibold;
     color: hsl(var(--primary));
+  }
+}
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Mobile responsive overrides */
+@media (max-width: 639px) {
+  .school-table thead th {
+    @apply px-2 py-2 text-[10px];
+  }
+
+  .school-table tbody td {
+    @apply px-2 py-1.5 text-xs;
+  }
+
+  .school-table.school-table-compact thead th {
+    @apply px-1.5 py-1.5;
+  }
+
+  .school-table.school-table-compact tbody td {
+    @apply px-1.5 py-1;
+  }
+
+  .badge-present,
+  .badge-absent,
+  .badge-done,
+  .badge-pending {
+    @apply px-1.5 py-0.5 text-[10px];
+  }
+
+  .btn-toggle-present,
+  .btn-toggle-absent,
+  .btn-toggle-done,
+  .btn-toggle-pending {
+    @apply px-2.5 py-2 text-[11px] min-h-[44px] min-w-[44px];
+  }
+
+  .section-card-header {
+    @apply flex-col items-start;
   }
 }

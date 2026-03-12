@@ -198,34 +198,36 @@ export function TurmaTab({
   };
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <div
-          className="rounded-lg px-4 py-2 text-sm font-bold"
-          style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-        >
-          {turma.name}
+    <div className="space-y-3 sm:space-y-4 p-2 sm:p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div
+            className="rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold"
+            style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+          >
+            {turma.name}
+          </div>
+          <span className="text-xs sm:text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+            {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s)
+          </span>
         </div>
-        <span className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
-          {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s)
-        </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:ml-auto">
           <button
             onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-            className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80"
+            className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
             style={{ color: "hsl(var(--muted-foreground))" }}
             title="Alternar ordem alfabética"
           >
             {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
           </button>
           {showSearch ? (
-            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
+            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1 flex-1 sm:flex-none">
               <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Pesquisar aluno..."
-                className="bg-transparent text-sm outline-none w-48"
+                className="bg-transparent text-sm outline-none w-full sm:w-48"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -234,14 +236,14 @@ export function TurmaTab({
                   {turmaStudents.length}/{allTurmaStudents.length}
                 </span>
               )}
-              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-0.5 hover:opacity-70">
+              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-1 hover:opacity-70 min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation">
                 <X size={14} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
-              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80 min-h-[36px] touch-manipulation"
               style={{ color: "hsl(var(--muted-foreground))" }}
               title="Pesquisar (Ctrl+F)"
             >
@@ -252,10 +254,10 @@ export function TurmaTab({
       </div>
 
       {/* Sub-tab navigation */}
-      <div className="flex gap-1 rounded-lg border border-border p-1" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content" }}>
+      <div className="flex gap-1 rounded-lg border border-border p-1 overflow-x-auto scrollbar-hide" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content", maxWidth: "100%" }}>
         <button
           onClick={() => setSubTab("diario")}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
+          className="flex items-center gap-1.5 rounded-md px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all min-h-[40px] touch-manipulation whitespace-nowrap"
           style={
             subTab === "diario"
               ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -266,7 +268,7 @@ export function TurmaTab({
         </button>
         <button
           onClick={() => setSubTab("tarefa-minima")}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
+          className="flex items-center gap-1.5 rounded-md px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all min-h-[40px] touch-manipulation whitespace-nowrap"
           style={
             subTab === "tarefa-minima"
               ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -285,20 +287,20 @@ export function TurmaTab({
               <span className="section-card-title">Data da Turma (Chamada + Atividades)</span>
               <button
                 onClick={exportCombinedExcel}
-                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80 min-h-[36px] touch-manipulation"
                 style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
               >
                 <Download size={12} /> Exportar Excel
               </button>
             </div>
-            <div className="flex items-center gap-3 p-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4">
               <input
                 type="date"
-                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation"
                 value={attendanceDate}
                 onChange={(e) => setAttendanceDate(e.target.value)}
               />
-              <span className="text-sm font-medium">{formatDate(attendanceDate)}</span>
+              <span className="text-xs sm:text-sm font-medium">{formatDate(attendanceDate)}</span>
               {turmaStudents.length > 0 && (
                 <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                   {getAttendanceSummaryForDate(attendanceDate).present}/{turmaStudents.length} presentes

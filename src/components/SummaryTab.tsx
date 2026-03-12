@@ -447,19 +447,19 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const alertTypeLabels: Record<string, string> = { attendance: "Frequência", activity: "Atividades", mintask: "Tarefa Mínima" };
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-3 sm:space-y-4 p-2 sm:p-4">
       {/* Filters */}
       <div className="section-card">
         <div className="section-card-header">
           <span className="section-card-title">Filtros</span>
         </div>
-        <div className="flex flex-wrap items-end gap-3 p-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 p-3 sm:p-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
               Turma
             </label>
             <select
-              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation w-full sm:w-auto"
               value={filterTurma}
               onChange={(e) => setFilterTurma(e.target.value)}
             >
@@ -475,7 +475,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
             </label>
             <input
               type="date"
-              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation w-full sm:w-auto"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
             />
@@ -486,14 +486,14 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
             </label>
             <input
               type="date"
-              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation w-full sm:w-auto"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
             />
           </div>
           <button
             onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
-            className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
+            className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto"
             style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
           >
             Limpar datas
@@ -598,11 +598,11 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
       )}
 
       {/* Search + Main sub-nav */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-1 rounded-lg border border-border p-1" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex gap-1 rounded-lg border border-border p-1 overflow-x-auto scrollbar-hide" style={{ backgroundColor: "hsl(var(--muted))", width: "fit-content", maxWidth: "100%" }}>
         <button
           onClick={() => setMainView("tabelas")}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
+          className="flex items-center gap-1.5 rounded-md px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all min-h-[40px] touch-manipulation whitespace-nowrap"
           style={
             mainView === "tabelas"
               ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -613,7 +613,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         </button>
         <button
           onClick={() => setMainView("graficos")}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-all"
+          className="flex items-center gap-1.5 rounded-md px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all min-h-[40px] touch-manipulation whitespace-nowrap"
           style={
             mainView === "graficos"
               ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -623,23 +623,23 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
           <BarChart2 size={14} /> Gráficos
         </button>
         </div>
-        <div className="ml-auto">
+        <div className="flex items-center gap-2 sm:ml-auto">
           <button
             onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-            className="mr-2 rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80"
+            className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
             style={{ color: "hsl(var(--muted-foreground))" }}
             title="Alternar ordem alfabética"
           >
             {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
           </button>
           {showSearch ? (
-            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
+            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1 flex-1 sm:flex-none">
               <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Pesquisar aluno..."
-                className="bg-transparent text-sm outline-none w-48"
+                className="bg-transparent text-sm outline-none w-full sm:w-48"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -648,14 +648,14 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                   {filteredStudents.length}/{allFilteredStudents.length}
                 </span>
               )}
-              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-0.5 hover:opacity-70">
+              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-1 hover:opacity-70 min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation">
                 <X size={14} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
-              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80 min-h-[36px] touch-manipulation"
               style={{ color: "hsl(var(--muted-foreground))" }}
               title="Pesquisar (Ctrl+F)"
             >
@@ -669,11 +669,11 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
       {mainView === "tabelas" && (
         <>
           {/* Toggle View */}
-           <div className="flex items-center gap-2 flex-wrap">
-             <div className="flex gap-2">
+           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+             <div className="flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setActiveView("attendance")}
-                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                className="rounded px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors min-h-[40px] touch-manipulation whitespace-nowrap"
                 style={
                   activeView === "attendance"
                     ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -684,7 +684,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
               </button>
               <button
                 onClick={() => setActiveView("activities")}
-                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                className="rounded px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors min-h-[40px] touch-manipulation whitespace-nowrap"
                 style={
                   activeView === "activities"
                     ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -695,7 +695,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
               </button>
               <button
                 onClick={() => setActiveView("mintasks")}
-                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                className="rounded px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors min-h-[40px] touch-manipulation whitespace-nowrap"
                 style={
                   activeView === "mintasks"
                     ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
@@ -707,7 +707,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
              </div>
              <button
                onClick={exportCompleteExcel}
-               className="ml-auto flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80"
+               className="sm:ml-auto flex items-center justify-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto"
                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
              >
                <Download size={14} /> Exportar Completo (Excel)
