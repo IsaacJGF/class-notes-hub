@@ -447,13 +447,13 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const alertTypeLabels: Record<string, string> = { attendance: "Frequência", activity: "Atividades", mintask: "Tarefa Mínima" };
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-3 sm:space-y-4 p-2 sm:p-4">
       {/* Filters */}
       <div className="section-card">
         <div className="section-card-header">
           <span className="section-card-title">Filtros</span>
         </div>
-        <div className="flex flex-wrap items-end gap-3 p-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 p-3 sm:p-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
               Turma
