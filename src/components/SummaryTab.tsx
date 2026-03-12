@@ -623,23 +623,23 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
           <BarChart2 size={14} /> Gráficos
         </button>
         </div>
-        <div className="ml-auto">
+        <div className="flex items-center gap-2 sm:ml-auto">
           <button
             onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-            className="mr-2 rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80"
+            className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
             style={{ color: "hsl(var(--muted-foreground))" }}
             title="Alternar ordem alfabética"
           >
             {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
           </button>
           {showSearch ? (
-            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1">
+            <div className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1 flex-1 sm:flex-none">
               <Search size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Pesquisar aluno..."
-                className="bg-transparent text-sm outline-none w-48"
+                className="bg-transparent text-sm outline-none w-full sm:w-48"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -648,14 +648,14 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                   {filteredStudents.length}/{allFilteredStudents.length}
                 </span>
               )}
-              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-0.5 hover:opacity-70">
+              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="rounded p-1 hover:opacity-70 min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation">
                 <X size={14} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
-              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80 min-h-[36px] touch-manipulation"
               style={{ color: "hsl(var(--muted-foreground))" }}
               title="Pesquisar (Ctrl+F)"
             >
