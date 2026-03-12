@@ -119,16 +119,16 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
             </span>
           </div>
           <div className="p-4">
-            <form onSubmit={handleAddStudent} className="flex gap-2">
+            <form onSubmit={handleAddStudent} className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
-                className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px]"
                 placeholder="Nome do aluno"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
               />
               <select
-                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px]"
                 value={selectedTurmaId}
                 onChange={(e) => setSelectedTurmaId(e.target.value)}
               >
@@ -140,7 +140,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
               <button
                 type="submit"
                 disabled={!studentName.trim() || !selectedTurmaId}
-                className="flex items-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
+                className="flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 min-h-[44px] touch-manipulation"
                 style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
               >
                 <UserPlus size={14} />

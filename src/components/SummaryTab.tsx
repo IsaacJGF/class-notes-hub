@@ -707,7 +707,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
              </div>
              <button
                onClick={exportCompleteExcel}
-               className="ml-auto flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80"
+               className="sm:ml-auto flex items-center justify-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto"
                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
              >
                <Download size={14} /> Exportar Completo (Excel)

@@ -287,20 +287,20 @@ export function TurmaTab({
               <span className="section-card-title">Data da Turma (Chamada + Atividades)</span>
               <button
                 onClick={exportCombinedExcel}
-                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80 min-h-[36px] touch-manipulation"
                 style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
               >
                 <Download size={12} /> Exportar Excel
               </button>
             </div>
-            <div className="flex items-center gap-3 p-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4">
               <input
                 type="date"
-                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation"
                 value={attendanceDate}
                 onChange={(e) => setAttendanceDate(e.target.value)}
               />
-              <span className="text-sm font-medium">{formatDate(attendanceDate)}</span>
+              <span className="text-xs sm:text-sm font-medium">{formatDate(attendanceDate)}</span>
               {turmaStudents.length > 0 && (
                 <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                   {getAttendanceSummaryForDate(attendanceDate).present}/{turmaStudents.length} presentes
