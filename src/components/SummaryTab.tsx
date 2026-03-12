@@ -475,7 +475,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
             </label>
             <input
               type="date"
-              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation w-full sm:w-auto"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
             />
@@ -486,14 +486,14 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
             </label>
             <input
               type="date"
-              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation w-full sm:w-auto"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
             />
           </div>
           <button
             onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
-            className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
+            className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto"
             style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
           >
             Limpar datas
