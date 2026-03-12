@@ -684,7 +684,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
               </button>
               <button
                 onClick={() => setActiveView("activities")}
-                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                className="rounded px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors min-h-[40px] touch-manipulation whitespace-nowrap"
                 style={
                   activeView === "activities"
                     ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
