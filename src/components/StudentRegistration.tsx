@@ -45,7 +45,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, addTurma,
   const turmaNames = Array.from(new Set(data.students.map((s) => s.turma)));
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       {showCsvModal && (
         <CsvImportModal
           data={data}
