@@ -459,7 +459,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
               Turma
             </label>
             <select
-              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] touch-manipulation w-full sm:w-auto"
               value={filterTurma}
               onChange={(e) => setFilterTurma(e.target.value)}
             >
