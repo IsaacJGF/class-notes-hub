@@ -669,11 +669,11 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
       {mainView === "tabelas" && (
         <>
           {/* Toggle View */}
-           <div className="flex items-center gap-2 flex-wrap">
-             <div className="flex gap-2">
+           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+             <div className="flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setActiveView("attendance")}
-                className="rounded px-4 py-2 text-sm font-semibold transition-colors"
+                className="rounded px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors min-h-[40px] touch-manipulation whitespace-nowrap"
                 style={
                   activeView === "attendance"
                     ? { backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
