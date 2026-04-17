@@ -15,6 +15,7 @@ export interface Activity {
   turmaId: string;
   name: string;
   date: string; // YYYY-MM-DD
+  deadline?: string; // YYYY-MM-DD — prazo final para entrega (opcional)
   createdAt: string;
 }
 
