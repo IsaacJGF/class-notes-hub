@@ -28,6 +28,18 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [attendanceThreshold, setAttendanceThreshold] = useState(() => {
     const saved = localStorage.getItem("alert_attendance_threshold");
@@ -932,16 +944,39 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                                 return <td key={a.id} className="text-center text-xs opacity-30">—</td>;
                               }
                               const status = getActivityStatus(student.id, a.id);
+                              const rec = getActivityRecordFull(student.id, a.id);
+                              const isDone = status === true;
+                              const markedAt = rec?.markedAt;
+                              const isLate = !!(isDone && a.deadline && !rec?.overrideOnTime && markedAt && markedAt > a.deadline);
+                              const overridden = !!rec?.overrideOnTime;
+                              const tooltip = !isDone
+                                ? (status === false ? "Pendente — clique para marcar como feito" : "Marcar")
+                                : isLate
+                                  ? `Feito fora do prazo — registrado em ${formatDate(markedAt!)} (prazo ${formatDate(a.deadline!)}) · clique direito para corrigir`
+                                  : overridden
+                                    ? `Marcado manualmente como no prazo${markedAt ? ` — registrado em ${formatDate(markedAt)}` : ""} · clique direito para reverter`
+                                    : `Feito no prazo${markedAt ? ` — registrado em ${formatDate(markedAt)}` : ""}`;
                               return (
                                 <td key={a.id} className="text-center">
                                   <button
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
+                                    onContextMenu={(e) => {
+                                      if (!isDone) return;
+                                      e.preventDefault();
+                                      setContextMenu({ x: e.clientX, y: e.clientY, studentId: student.id, activityId: a.id });
+                                    }}
                                     className="mx-auto flex items-center justify-center rounded p-0.5 hover:bg-muted transition-colors cursor-pointer"
-                                    title={status === true ? "Feito → Pendente" : "Pendente → Feito"}
+                                    title={tooltip}
                                   >
-                                    {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />}
-                                    {status === false && <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />}
-                                    {status === null && <Circle size={14} className="opacity-20" />}
+                                    {isLate ? (
+                                      <AlertTriangle size={16} style={{ color: "hsl(38 92% 45%)" }} />
+                                    ) : isDone ? (
+                                      <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />
+                                    ) : status === false ? (
+                                      <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />
+                                    ) : (
+                                      <Circle size={14} className="opacity-20" />
+                                    )}
                                   </button>
                                 </td>
                               );
