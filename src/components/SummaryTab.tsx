@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { SchoolData } from "@/types";
+import { SchoolData, ActivityRecord } from "@/types";
 import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
@@ -9,13 +9,15 @@ interface Props {
   data: SchoolData;
   toggleAttendance: (studentId: string, date: string) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
+  getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
+  setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
 }
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMinTaskRecord, getMinTaskRecord }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
@@ -26,6 +28,18 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [attendanceThreshold, setAttendanceThreshold] = useState(() => {
     const saved = localStorage.getItem("alert_attendance_threshold");
@@ -930,16 +944,39 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
                                 return <td key={a.id} className="text-center text-xs opacity-30">—</td>;
                               }
                               const status = getActivityStatus(student.id, a.id);
+                              const rec = getActivityRecordFull(student.id, a.id);
+                              const isDone = status === true;
+                              const markedAt = rec?.markedAt;
+                              const isLate = !!(isDone && a.deadline && !rec?.overrideOnTime && markedAt && markedAt > a.deadline);
+                              const overridden = !!rec?.overrideOnTime;
+                              const tooltip = !isDone
+                                ? (status === false ? "Pendente — clique para marcar como feito" : "Marcar")
+                                : isLate
+                                  ? `Feito fora do prazo — registrado em ${formatDate(markedAt!)} (prazo ${formatDate(a.deadline!)}) · clique direito para corrigir`
+                                  : overridden
+                                    ? `Marcado manualmente como no prazo${markedAt ? ` — registrado em ${formatDate(markedAt)}` : ""} · clique direito para reverter`
+                                    : `Feito no prazo${markedAt ? ` — registrado em ${formatDate(markedAt)}` : ""}`;
                               return (
                                 <td key={a.id} className="text-center">
                                   <button
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
+                                    onContextMenu={(e) => {
+                                      if (!isDone) return;
+                                      e.preventDefault();
+                                      setContextMenu({ x: e.clientX, y: e.clientY, studentId: student.id, activityId: a.id });
+                                    }}
                                     className="mx-auto flex items-center justify-center rounded p-0.5 hover:bg-muted transition-colors cursor-pointer"
-                                    title={status === true ? "Feito → Pendente" : "Pendente → Feito"}
+                                    title={tooltip}
                                   >
-                                    {status === true && <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />}
-                                    {status === false && <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />}
-                                    {status === null && <Circle size={14} className="opacity-20" />}
+                                    {isLate ? (
+                                      <AlertTriangle size={16} style={{ color: "hsl(38 92% 45%)" }} />
+                                    ) : isDone ? (
+                                      <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />
+                                    ) : status === false ? (
+                                      <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />
+                                    ) : (
+                                      <Circle size={14} className="opacity-20" />
+                                    )}
                                   </button>
                                 </td>
                               );
@@ -1092,6 +1129,57 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMi
         />
       )}
       </>)}
+
+      {contextMenu && (() => {
+        const rec = getActivityRecordFull(contextMenu.studentId, contextMenu.activityId);
+        const activity = data.activities.find((a) => a.id === contextMenu.activityId);
+        const isCurrentlyOverridden = !!rec?.overrideOnTime;
+        const markedAt = rec?.markedAt ?? activity?.date ?? "";
+        const isActuallyLate = !!(activity?.deadline && markedAt > activity.deadline);
+        return (
+          <div
+            className="fixed z-50 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-2 text-xs font-semibold border-b border-border" style={{ color: "hsl(var(--muted-foreground))" }}>
+              Status da entrega
+            </div>
+            {!activity?.deadline && (
+              <div className="px-3 py-2 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                Esta atividade não possui prazo definido.
+              </div>
+            )}
+            {activity?.deadline && isActuallyLate && !isCurrentlyOverridden && (
+              <button
+                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, true);
+                  setContextMenu(null);
+                }}
+              >
+                ✓ Marcar como feito no prazo
+              </button>
+            )}
+            {activity?.deadline && isCurrentlyOverridden && (
+              <button
+                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, false);
+                  setContextMenu(null);
+                }}
+              >
+                ⟲ Reverter para "atrasado"
+              </button>
+            )}
+            {activity?.deadline && !isActuallyLate && !isCurrentlyOverridden && (
+              <div className="px-3 py-2 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                Esta entrega está dentro do prazo.
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

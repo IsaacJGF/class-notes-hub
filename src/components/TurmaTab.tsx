@@ -64,18 +64,6 @@ export function TurmaTab({
   const [newMinTaskTotal, setNewMinTaskTotal] = useState(20);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showMinTaskImportModal, setShowMinTaskImportModal] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, [contextMenu]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -542,55 +530,23 @@ export function TurmaTab({
                             </button>
                           </td>
                           {dailyActivities.map((a) => {
-                            const status = getActivityStatus(student.id, a);
+                            const status = getActivityRecord(student.id, a.id);
                             const rec = getActivityRecordFull(student.id, a.id);
-                            const isLate = status === "late";
-                            const isOnTime = status === "on-time";
-                            const tooltip = isLate
-                              ? `Feito fora do prazo${rec?.markedAt ? ` (marcado em ${formatDate(rec.markedAt)}, prazo ${formatDate(a.deadline!)})` : ""} — clique direito para corrigir`
-                              : isOnTime && rec?.overrideOnTime
-                                ? "Marcado manualmente como no prazo — clique direito para reverter"
-                                : isOnTime
-                                  ? "Feito no prazo"
-                                  : "Pendente";
+                            const isDone = status === true;
+                            const tooltip = isDone
+                              ? `Feito${rec?.markedAt ? ` — registrado em ${formatDate(rec.markedAt)}` : ""}`
+                              : status === false
+                                ? "Pendente"
+                                : "Marcar";
                             return (
                               <td key={a.id} className="text-center">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
-                                    onContextMenu={(e) => {
-                                      if (status === "pending") return;
-                                      e.preventDefault();
-                                      setContextMenu({
-                                        x: e.clientX,
-                                        y: e.clientY,
-                                        studentId: student.id,
-                                        activityId: a.id,
-                                      });
-                                    }}
                                     title={tooltip}
-                                    className={isOnTime ? "btn-toggle-done" : "btn-toggle-pending"}
-                                    style={
-                                      isLate
-                                        ? {
-                                            backgroundColor: "hsl(38 92% 90%)",
-                                            color: "hsl(25 95% 30%)",
-                                            borderColor: "hsl(38 92% 60%)",
-                                            borderWidth: "1px",
-                                            borderStyle: "solid",
-                                          }
-                                        : undefined
-                                    }
+                                    className={isDone ? "btn-toggle-done" : "btn-toggle-pending"}
                                   >
-                                    {isLate ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <AlertTriangle size={10} /> Atrasado
-                                      </span>
-                                    ) : isOnTime ? (
-                                      "✓ Feito"
-                                    ) : (
-                                      "✗ Pendente"
-                                    )}
+                                    {isDone ? "✓ Feito" : status === false ? "✗ Pendente" : "Marcar"}
                                   </button>
                                 </div>
                               </td>
@@ -780,51 +736,6 @@ export function TurmaTab({
         setMinTaskRecord={setMinTaskRecord}
       />
 
-      {contextMenu && (() => {
-        const rec = getActivityRecordFull(contextMenu.studentId, contextMenu.activityId);
-        const activity = data.activities.find((a) => a.id === contextMenu.activityId);
-        const isCurrentlyOverridden = !!rec?.overrideOnTime;
-        const markedAt = rec?.markedAt ?? activity?.date ?? "";
-        const isActuallyLate = !!(activity?.deadline && markedAt > activity.deadline);
-        return (
-          <div
-            className="fixed z-50 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg"
-            style={{ top: contextMenu.y, left: contextMenu.x }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-3 py-2 text-xs font-semibold border-b border-border" style={{ color: "hsl(var(--muted-foreground))" }}>
-              Status da entrega
-            </div>
-            {isActuallyLate && !isCurrentlyOverridden && (
-              <button
-                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                onClick={() => {
-                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, true);
-                  setContextMenu(null);
-                }}
-              >
-                ✓ Marcar como feito no prazo
-              </button>
-            )}
-            {isCurrentlyOverridden && (
-              <button
-                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                onClick={() => {
-                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, false);
-                  setContextMenu(null);
-                }}
-              >
-                ⟲ Reverter para "atrasado"
-              </button>
-            )}
-            {!isActuallyLate && !isCurrentlyOverridden && (
-              <div className="px-3 py-2 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                Esta entrega está dentro do prazo.
-              </div>
-            )}
-          </div>
-        );
-      })()}
     </div>
   );
 }
