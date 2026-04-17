@@ -186,15 +186,23 @@ export function useSchoolData() {
   // --- Activity Records ---
   const toggleActivityRecord = useCallback((studentId: string, activityId: string) => {
     setData((prev) => {
+      const today = new Date().toISOString().slice(0, 10);
       const existing = prev.activityRecords.find(
         (r) => r.studentId === studentId && r.activityId === activityId
       );
       if (existing) {
         return {
           ...prev,
-          activityRecords: prev.activityRecords.map((r) =>
-            r.id === existing.id ? { ...r, done: !r.done } : r
-          ),
+          activityRecords: prev.activityRecords.map((r) => {
+            if (r.id !== existing.id) return r;
+            const newDone = !r.done;
+            return {
+              ...r,
+              done: newDone,
+              markedAt: newDone ? today : undefined,
+              overrideOnTime: newDone ? r.overrideOnTime : undefined,
+            };
+          }),
         };
       }
       const newRecord: ActivityRecord = {
@@ -202,10 +210,26 @@ export function useSchoolData() {
         studentId,
         activityId,
         done: true,
+        markedAt: today,
       };
       return {
         ...prev,
         activityRecords: [...prev.activityRecords, newRecord],
+      };
+    });
+  }, []);
+
+  const setActivityOnTimeOverride = useCallback((studentId: string, activityId: string, override: boolean) => {
+    setData((prev) => {
+      const existing = prev.activityRecords.find(
+        (r) => r.studentId === studentId && r.activityId === activityId
+      );
+      if (!existing) return prev;
+      return {
+        ...prev,
+        activityRecords: prev.activityRecords.map((r) =>
+          r.id === existing.id ? { ...r, overrideOnTime: override || undefined } : r
+        ),
       };
     });
   }, []);
