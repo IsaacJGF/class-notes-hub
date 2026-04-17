@@ -552,6 +552,9 @@ export function TurmaTab({
                               </td>
                             );
                           })}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
