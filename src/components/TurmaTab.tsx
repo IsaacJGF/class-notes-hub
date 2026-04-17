@@ -38,6 +38,8 @@ export function TurmaTab({
   getAttendance,
   toggleActivityRecord,
   getActivityRecord,
+  getActivityRecordFull,
+  setActivityOnTimeOverride,
   toggleParticipation,
   toggleExtraPoint,
   getParticipation,
@@ -50,6 +52,9 @@ export function TurmaTab({
   const [subTab, setSubTab] = useState<SubTab>("diario");
   const [newActivityName, setNewActivityName] = useState("");
   const [newActivityDate, setNewActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [deadlineMode, setDeadlineMode] = useState<DeadlineMode>("none");
+  const [newActivityDeadline, setNewActivityDeadline] = useState("");
+  const [newActivityDeadlineDays, setNewActivityDeadlineDays] = useState(7);
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -59,6 +64,18 @@ export function TurmaTab({
   const [newMinTaskTotal, setNewMinTaskTotal] = useState(20);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showMinTaskImportModal, setShowMinTaskImportModal] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
