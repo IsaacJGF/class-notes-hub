@@ -370,6 +370,8 @@ export function useSchoolData() {
     getAttendance,
     toggleActivityRecord,
     getActivityRecord,
+    getActivityRecordFull,
+    setActivityOnTimeOverride,
     toggleParticipation,
     toggleExtraPoint,
     getParticipation,
