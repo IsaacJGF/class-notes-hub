@@ -1,21 +1,24 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { SchoolData, Turma, Activity, MinTask } from "@/types";
-import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList } from "lucide-react";
+import { SchoolData, Turma, Activity, MinTask, ActivityRecord } from "@/types";
+import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { MinTaskCsvImportModal } from "@/components/MinTaskCsvImportModal";
 
 type SubTab = "diario" | "tarefa-minima";
+type DeadlineMode = "none" | "date" | "days";
 
 interface Props {
   turma: Turma;
   data: SchoolData;
-  addActivity: (turmaId: string, name: string, date: string) => Activity;
+  addActivity: (turmaId: string, name: string, date: string, deadline?: string) => Activity;
   removeActivity: (id: string) => void;
   toggleAttendance: (studentId: string, date: string) => void;
   getAttendance: (studentId: string, date: string) => boolean | null;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecord: (studentId: string, activityId: string) => boolean | null;
+  getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
+  setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   toggleParticipation: (studentId: string, date: string) => void;
   toggleExtraPoint: (studentId: string, date: string) => void;
   getParticipation: (studentId: string, date: string) => boolean;
