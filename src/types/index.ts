@@ -31,6 +31,8 @@ export interface ActivityRecord {
   studentId: string;
   activityId: string;
   done: boolean;
+  markedAt?: string; // YYYY-MM-DD — data em que foi marcado como feito
+  overrideOnTime?: boolean; // se true, professor forçou "no prazo" mesmo se markedAt > deadline
 }
 
 export interface ClassRecord {
