@@ -542,15 +542,55 @@ export function TurmaTab({
                             </button>
                           </td>
                           {dailyActivities.map((a) => {
-                            const done = getActivityRecord(student.id, a.id);
+                            const status = getActivityStatus(student.id, a);
+                            const rec = getActivityRecordFull(student.id, a.id);
+                            const isLate = status === "late";
+                            const isOnTime = status === "on-time";
+                            const tooltip = isLate
+                              ? `Feito fora do prazo${rec?.markedAt ? ` (marcado em ${formatDate(rec.markedAt)}, prazo ${formatDate(a.deadline!)})` : ""} — clique direito para corrigir`
+                              : isOnTime && rec?.overrideOnTime
+                                ? "Marcado manualmente como no prazo — clique direito para reverter"
+                                : isOnTime
+                                  ? "Feito no prazo"
+                                  : "Pendente";
                             return (
                               <td key={a.id} className="text-center">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
-                                    className={done === true ? "btn-toggle-done" : "btn-toggle-pending"}
+                                    onContextMenu={(e) => {
+                                      if (status === "pending") return;
+                                      e.preventDefault();
+                                      setContextMenu({
+                                        x: e.clientX,
+                                        y: e.clientY,
+                                        studentId: student.id,
+                                        activityId: a.id,
+                                      });
+                                    }}
+                                    title={tooltip}
+                                    className={isOnTime ? "btn-toggle-done" : "btn-toggle-pending"}
+                                    style={
+                                      isLate
+                                        ? {
+                                            backgroundColor: "hsl(38 92% 90%)",
+                                            color: "hsl(25 95% 30%)",
+                                            borderColor: "hsl(38 92% 60%)",
+                                            borderWidth: "1px",
+                                            borderStyle: "solid",
+                                          }
+                                        : undefined
+                                    }
                                   >
-                                    {done === true ? "✓ Feito" : "✗ Pendente"}
+                                    {isLate ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        <AlertTriangle size={10} /> Atrasado
+                                      </span>
+                                    ) : isOnTime ? (
+                                      "✓ Feito"
+                                    ) : (
+                                      "✗ Pendente"
+                                    )}
                                   </button>
                                 </div>
                               </td>
