@@ -95,6 +95,8 @@ const Index = () => {
             data={school.data}
             toggleAttendance={school.toggleAttendance}
             toggleActivityRecord={school.toggleActivityRecord}
+            getActivityRecordFull={school.getActivityRecordFull}
+            setActivityOnTimeOverride={school.setActivityOnTimeOverride}
             setMinTaskRecord={school.setMinTaskRecord}
             getMinTaskRecord={school.getMinTaskRecord}
           />
