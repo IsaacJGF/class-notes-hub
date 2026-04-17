@@ -138,11 +138,36 @@ export function TurmaTab({
     [data.minTasks, turma.id]
   );
 
+  const computeDeadline = (): string | undefined => {
+    if (deadlineMode === "date") return newActivityDeadline || undefined;
+    if (deadlineMode === "days") {
+      const base = new Date(`${newActivityDate}T00:00:00`);
+      base.setDate(base.getDate() + (newActivityDeadlineDays || 0));
+      return base.toISOString().slice(0, 10);
+    }
+    return undefined;
+  };
+
   const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newActivityName.trim() || !newActivityDate) return;
-    addActivity(turma.id, newActivityName.trim(), newActivityDate);
+    const deadline = computeDeadline();
+    if (deadlineMode === "date" && !deadline) return;
+    addActivity(turma.id, newActivityName.trim(), newActivityDate, deadline);
     setNewActivityName("");
+    setNewActivityDeadline("");
+  };
+
+  const getActivityStatus = (
+    studentId: string,
+    activity: Activity
+  ): "pending" | "on-time" | "late" => {
+    const rec = getActivityRecordFull(studentId, activity.id);
+    if (!rec || !rec.done) return "pending";
+    if (!activity.deadline) return "on-time";
+    if (rec.overrideOnTime) return "on-time";
+    const markedAt = rec.markedAt ?? activity.date;
+    return markedAt > activity.deadline ? "late" : "on-time";
   };
 
   const handleAddMinTask = (e: React.FormEvent) => {
