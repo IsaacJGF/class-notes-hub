@@ -365,29 +365,75 @@ export function TurmaTab({
               </span>
             </div>
             <div className="p-4">
-              <form onSubmit={handleAddActivity} className="flex flex-wrap gap-2">
-                <input
-                  type="text"
-                  className="flex-1 min-w-40 rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Nome da atividade (ex: Prova 1, Lista 2...)"
-                  value={newActivityName}
-                  onChange={(e) => setNewActivityName(e.target.value)}
-                />
-                <input
-                  type="date"
-                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={newActivityDate}
-                  onChange={(e) => setNewActivityDate(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  disabled={!newActivityName.trim() || !newActivityDate}
-                  className="flex items-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
-                  style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-                >
-                  <Plus size={14} />
-                  Adicionar
-                </button>
+              <form onSubmit={handleAddActivity} className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 min-w-40 rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Nome da atividade (ex: Prova 1, Lista 2...)"
+                    value={newActivityName}
+                    onChange={(e) => setNewActivityName(e.target.value)}
+                  />
+                  <input
+                    type="date"
+                    className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={newActivityDate}
+                    onChange={(e) => setNewActivityDate(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    Prazo:
+                  </label>
+                  <select
+                    className="rounded border border-border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={deadlineMode}
+                    onChange={(e) => setDeadlineMode(e.target.value as DeadlineMode)}
+                  >
+                    <option value="none">Sem prazo</option>
+                    <option value="date">Data específica</option>
+                    <option value="days">Dias após</option>
+                  </select>
+                  {deadlineMode === "date" && (
+                    <input
+                      type="date"
+                      min={newActivityDate}
+                      className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={newActivityDeadline}
+                      onChange={(e) => setNewActivityDeadline(e.target.value)}
+                    />
+                  )}
+                  {deadlineMode === "days" && (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-20 rounded border border-border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        value={newActivityDeadlineDays}
+                        onChange={(e) => setNewActivityDeadlineDays(parseInt(e.target.value) || 1)}
+                      />
+                      <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>dia(s)</span>
+                    </div>
+                  )}
+                  {deadlineMode !== "none" && computeDeadline() && (
+                    <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      → {formatDate(computeDeadline()!)}
+                    </span>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={
+                      !newActivityName.trim() ||
+                      !newActivityDate ||
+                      (deadlineMode === "date" && !newActivityDeadline)
+                    }
+                    className="flex items-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 ml-auto"
+                    style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+                  >
+                    <Plus size={14} />
+                    Adicionar
+                  </button>
+                </div>
               </form>
             </div>
           </div>
