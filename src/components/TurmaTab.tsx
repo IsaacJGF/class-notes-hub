@@ -1,21 +1,24 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { SchoolData, Turma, Activity, MinTask } from "@/types";
-import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList } from "lucide-react";
+import { SchoolData, Turma, Activity, MinTask, ActivityRecord } from "@/types";
+import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { MinTaskCsvImportModal } from "@/components/MinTaskCsvImportModal";
 
 type SubTab = "diario" | "tarefa-minima";
+type DeadlineMode = "none" | "date" | "days";
 
 interface Props {
   turma: Turma;
   data: SchoolData;
-  addActivity: (turmaId: string, name: string, date: string) => Activity;
+  addActivity: (turmaId: string, name: string, date: string, deadline?: string) => Activity;
   removeActivity: (id: string) => void;
   toggleAttendance: (studentId: string, date: string) => void;
   getAttendance: (studentId: string, date: string) => boolean | null;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecord: (studentId: string, activityId: string) => boolean | null;
+  getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
+  setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   toggleParticipation: (studentId: string, date: string) => void;
   toggleExtraPoint: (studentId: string, date: string) => void;
   getParticipation: (studentId: string, date: string) => boolean;
@@ -35,6 +38,8 @@ export function TurmaTab({
   getAttendance,
   toggleActivityRecord,
   getActivityRecord,
+  getActivityRecordFull,
+  setActivityOnTimeOverride,
   toggleParticipation,
   toggleExtraPoint,
   getParticipation,
@@ -47,6 +52,9 @@ export function TurmaTab({
   const [subTab, setSubTab] = useState<SubTab>("diario");
   const [newActivityName, setNewActivityName] = useState("");
   const [newActivityDate, setNewActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [deadlineMode, setDeadlineMode] = useState<DeadlineMode>("none");
+  const [newActivityDeadline, setNewActivityDeadline] = useState("");
+  const [newActivityDeadlineDays, setNewActivityDeadlineDays] = useState(7);
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -56,6 +64,18 @@ export function TurmaTab({
   const [newMinTaskTotal, setNewMinTaskTotal] = useState(20);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showMinTaskImportModal, setShowMinTaskImportModal] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -118,11 +138,36 @@ export function TurmaTab({
     [data.minTasks, turma.id]
   );
 
+  const computeDeadline = (): string | undefined => {
+    if (deadlineMode === "date") return newActivityDeadline || undefined;
+    if (deadlineMode === "days") {
+      const base = new Date(`${newActivityDate}T00:00:00`);
+      base.setDate(base.getDate() + (newActivityDeadlineDays || 0));
+      return base.toISOString().slice(0, 10);
+    }
+    return undefined;
+  };
+
   const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newActivityName.trim() || !newActivityDate) return;
-    addActivity(turma.id, newActivityName.trim(), newActivityDate);
+    const deadline = computeDeadline();
+    if (deadlineMode === "date" && !deadline) return;
+    addActivity(turma.id, newActivityName.trim(), newActivityDate, deadline);
     setNewActivityName("");
+    setNewActivityDeadline("");
+  };
+
+  const getActivityStatus = (
+    studentId: string,
+    activity: Activity
+  ): "pending" | "on-time" | "late" => {
+    const rec = getActivityRecordFull(studentId, activity.id);
+    if (!rec || !rec.done) return "pending";
+    if (!activity.deadline) return "on-time";
+    if (rec.overrideOnTime) return "on-time";
+    const markedAt = rec.markedAt ?? activity.date;
+    return markedAt > activity.deadline ? "late" : "on-time";
   };
 
   const handleAddMinTask = (e: React.FormEvent) => {
@@ -320,29 +365,75 @@ export function TurmaTab({
               </span>
             </div>
             <div className="p-4">
-              <form onSubmit={handleAddActivity} className="flex flex-wrap gap-2">
-                <input
-                  type="text"
-                  className="flex-1 min-w-40 rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Nome da atividade (ex: Prova 1, Lista 2...)"
-                  value={newActivityName}
-                  onChange={(e) => setNewActivityName(e.target.value)}
-                />
-                <input
-                  type="date"
-                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={newActivityDate}
-                  onChange={(e) => setNewActivityDate(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  disabled={!newActivityName.trim() || !newActivityDate}
-                  className="flex items-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
-                  style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-                >
-                  <Plus size={14} />
-                  Adicionar
-                </button>
+              <form onSubmit={handleAddActivity} className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 min-w-40 rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Nome da atividade (ex: Prova 1, Lista 2...)"
+                    value={newActivityName}
+                    onChange={(e) => setNewActivityName(e.target.value)}
+                  />
+                  <input
+                    type="date"
+                    className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={newActivityDate}
+                    onChange={(e) => setNewActivityDate(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>
+                    Prazo:
+                  </label>
+                  <select
+                    className="rounded border border-border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={deadlineMode}
+                    onChange={(e) => setDeadlineMode(e.target.value as DeadlineMode)}
+                  >
+                    <option value="none">Sem prazo</option>
+                    <option value="date">Data específica</option>
+                    <option value="days">Dias após</option>
+                  </select>
+                  {deadlineMode === "date" && (
+                    <input
+                      type="date"
+                      min={newActivityDate}
+                      className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={newActivityDeadline}
+                      onChange={(e) => setNewActivityDeadline(e.target.value)}
+                    />
+                  )}
+                  {deadlineMode === "days" && (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-20 rounded border border-border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        value={newActivityDeadlineDays}
+                        onChange={(e) => setNewActivityDeadlineDays(parseInt(e.target.value) || 1)}
+                      />
+                      <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>dia(s)</span>
+                    </div>
+                  )}
+                  {deadlineMode !== "none" && computeDeadline() && (
+                    <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      → {formatDate(computeDeadline()!)}
+                    </span>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={
+                      !newActivityName.trim() ||
+                      !newActivityDate ||
+                      (deadlineMode === "date" && !newActivityDeadline)
+                    }
+                    className="flex items-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 ml-auto"
+                    style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+                  >
+                    <Plus size={14} />
+                    Adicionar
+                  </button>
+                </div>
               </form>
             </div>
           </div>
@@ -371,15 +462,22 @@ export function TurmaTab({
                       <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Ponto Extra</th>
                       {dailyActivities.map((a) => (
                         <th key={a.id} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                          <div className="flex items-center justify-center gap-1">
-                            {a.name}
-                            <button
-                              onClick={() => removeActivity(a.id)}
-                              className="ml-1 rounded-full p-0.5 opacity-50 hover:opacity-100 transition-opacity"
-                              title="Remover atividade"
-                            >
-                              <Trash2 size={10} />
-                            </button>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1">
+                              {a.name}
+                              <button
+                                onClick={() => removeActivity(a.id)}
+                                className="ml-1 rounded-full p-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                                title="Remover atividade"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                            {a.deadline && (
+                              <span className="text-[10px] font-normal opacity-70" title={`Prazo: ${formatDate(a.deadline)}`}>
+                                Prazo: {formatShort(a.deadline)}
+                              </span>
+                            )}
                           </div>
                         </th>
                       ))}
@@ -444,15 +542,55 @@ export function TurmaTab({
                             </button>
                           </td>
                           {dailyActivities.map((a) => {
-                            const done = getActivityRecord(student.id, a.id);
+                            const status = getActivityStatus(student.id, a);
+                            const rec = getActivityRecordFull(student.id, a.id);
+                            const isLate = status === "late";
+                            const isOnTime = status === "on-time";
+                            const tooltip = isLate
+                              ? `Feito fora do prazo${rec?.markedAt ? ` (marcado em ${formatDate(rec.markedAt)}, prazo ${formatDate(a.deadline!)})` : ""} — clique direito para corrigir`
+                              : isOnTime && rec?.overrideOnTime
+                                ? "Marcado manualmente como no prazo — clique direito para reverter"
+                                : isOnTime
+                                  ? "Feito no prazo"
+                                  : "Pendente";
                             return (
                               <td key={a.id} className="text-center">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={() => toggleActivityRecord(student.id, a.id)}
-                                    className={done === true ? "btn-toggle-done" : "btn-toggle-pending"}
+                                    onContextMenu={(e) => {
+                                      if (status === "pending") return;
+                                      e.preventDefault();
+                                      setContextMenu({
+                                        x: e.clientX,
+                                        y: e.clientY,
+                                        studentId: student.id,
+                                        activityId: a.id,
+                                      });
+                                    }}
+                                    title={tooltip}
+                                    className={isOnTime ? "btn-toggle-done" : "btn-toggle-pending"}
+                                    style={
+                                      isLate
+                                        ? {
+                                            backgroundColor: "hsl(38 92% 90%)",
+                                            color: "hsl(25 95% 30%)",
+                                            borderColor: "hsl(38 92% 60%)",
+                                            borderWidth: "1px",
+                                            borderStyle: "solid",
+                                          }
+                                        : undefined
+                                    }
                                   >
-                                    {done === true ? "✓ Feito" : "✗ Pendente"}
+                                    {isLate ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        <AlertTriangle size={10} /> Atrasado
+                                      </span>
+                                    ) : isOnTime ? (
+                                      "✓ Feito"
+                                    ) : (
+                                      "✗ Pendente"
+                                    )}
                                   </button>
                                 </div>
                               </td>
@@ -641,6 +779,52 @@ export function TurmaTab({
         minTasks={turmaMinTasks}
         setMinTaskRecord={setMinTaskRecord}
       />
+
+      {contextMenu && (() => {
+        const rec = getActivityRecordFull(contextMenu.studentId, contextMenu.activityId);
+        const activity = data.activities.find((a) => a.id === contextMenu.activityId);
+        const isCurrentlyOverridden = !!rec?.overrideOnTime;
+        const markedAt = rec?.markedAt ?? activity?.date ?? "";
+        const isActuallyLate = !!(activity?.deadline && markedAt > activity.deadline);
+        return (
+          <div
+            className="fixed z-50 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-2 text-xs font-semibold border-b border-border" style={{ color: "hsl(var(--muted-foreground))" }}>
+              Status da entrega
+            </div>
+            {isActuallyLate && !isCurrentlyOverridden && (
+              <button
+                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, true);
+                  setContextMenu(null);
+                }}
+              >
+                ✓ Marcar como feito no prazo
+              </button>
+            )}
+            {isCurrentlyOverridden && (
+              <button
+                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, false);
+                  setContextMenu(null);
+                }}
+              >
+                ⟲ Reverter para "atrasado"
+              </button>
+            )}
+            {!isActuallyLate && !isCurrentlyOverridden && (
+              <div className="px-3 py-2 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                Esta entrega está dentro do prazo.
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

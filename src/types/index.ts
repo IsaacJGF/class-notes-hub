@@ -15,6 +15,7 @@ export interface Activity {
   turmaId: string;
   name: string;
   date: string; // YYYY-MM-DD
+  deadline?: string; // YYYY-MM-DD — prazo final para entrega (opcional)
   createdAt: string;
 }
 
@@ -30,6 +31,8 @@ export interface ActivityRecord {
   studentId: string;
   activityId: string;
   done: boolean;
+  markedAt?: string; // YYYY-MM-DD — data em que foi marcado como feito
+  overrideOnTime?: boolean; // se true, professor forçou "no prazo" mesmo se markedAt > deadline
 }
 
 export interface ClassRecord {

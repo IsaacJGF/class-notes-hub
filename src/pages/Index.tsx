@@ -109,6 +109,8 @@ const Index = () => {
             getAttendance={school.getAttendance}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecord={school.getActivityRecord}
+            getActivityRecordFull={school.getActivityRecordFull}
+            setActivityOnTimeOverride={school.setActivityOnTimeOverride}
             toggleParticipation={school.toggleParticipation}
             toggleExtraPoint={school.toggleExtraPoint}
             getParticipation={school.getParticipation}

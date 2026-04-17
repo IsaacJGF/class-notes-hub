@@ -103,13 +103,14 @@ export function useSchoolData() {
   }, [data.turmas]);
 
   // --- Activities ---
-  const addActivity = useCallback((turmaId: string, name: string, date: string) => {
+  const addActivity = useCallback((turmaId: string, name: string, date: string, deadline?: string) => {
     const activityId = generateId();
     const activity: Activity = {
       id: activityId,
       turmaId,
       name: name.trim(),
       date,
+      deadline: deadline || undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -185,15 +186,23 @@ export function useSchoolData() {
   // --- Activity Records ---
   const toggleActivityRecord = useCallback((studentId: string, activityId: string) => {
     setData((prev) => {
+      const today = new Date().toISOString().slice(0, 10);
       const existing = prev.activityRecords.find(
         (r) => r.studentId === studentId && r.activityId === activityId
       );
       if (existing) {
         return {
           ...prev,
-          activityRecords: prev.activityRecords.map((r) =>
-            r.id === existing.id ? { ...r, done: !r.done } : r
-          ),
+          activityRecords: prev.activityRecords.map((r) => {
+            if (r.id !== existing.id) return r;
+            const newDone = !r.done;
+            return {
+              ...r,
+              done: newDone,
+              markedAt: newDone ? today : undefined,
+              overrideOnTime: newDone ? r.overrideOnTime : undefined,
+            };
+          }),
         };
       }
       const newRecord: ActivityRecord = {
@@ -201,10 +210,26 @@ export function useSchoolData() {
         studentId,
         activityId,
         done: true,
+        markedAt: today,
       };
       return {
         ...prev,
         activityRecords: [...prev.activityRecords, newRecord],
+      };
+    });
+  }, []);
+
+  const setActivityOnTimeOverride = useCallback((studentId: string, activityId: string, override: boolean) => {
+    setData((prev) => {
+      const existing = prev.activityRecords.find(
+        (r) => r.studentId === studentId && r.activityId === activityId
+      );
+      if (!existing) return prev;
+      return {
+        ...prev,
+        activityRecords: prev.activityRecords.map((r) =>
+          r.id === existing.id ? { ...r, overrideOnTime: override || undefined } : r
+        ),
       };
     });
   }, []);
@@ -216,6 +241,17 @@ export function useSchoolData() {
       );
       if (!record) return null;
       return record.done;
+    },
+    [data.activityRecords]
+  );
+
+  const getActivityRecordFull = useCallback(
+    (studentId: string, activityId: string): ActivityRecord | null => {
+      return (
+        data.activityRecords.find(
+          (r) => r.studentId === studentId && r.activityId === activityId
+        ) ?? null
+      );
     },
     [data.activityRecords]
   );
@@ -334,6 +370,8 @@ export function useSchoolData() {
     getAttendance,
     toggleActivityRecord,
     getActivityRecord,
+    getActivityRecordFull,
+    setActivityOnTimeOverride,
     toggleParticipation,
     toggleExtraPoint,
     getParticipation,
