@@ -103,13 +103,14 @@ export function useSchoolData() {
   }, [data.turmas]);
 
   // --- Activities ---
-  const addActivity = useCallback((turmaId: string, name: string, date: string) => {
+  const addActivity = useCallback((turmaId: string, name: string, date: string, deadline?: string) => {
     const activityId = generateId();
     const activity: Activity = {
       id: activityId,
       turmaId,
       name: name.trim(),
       date,
+      deadline: deadline || undefined,
       createdAt: new Date().toISOString(),
     };
 
