@@ -779,6 +779,52 @@ export function TurmaTab({
         minTasks={turmaMinTasks}
         setMinTaskRecord={setMinTaskRecord}
       />
+
+      {contextMenu && (() => {
+        const rec = getActivityRecordFull(contextMenu.studentId, contextMenu.activityId);
+        const activity = data.activities.find((a) => a.id === contextMenu.activityId);
+        const isCurrentlyOverridden = !!rec?.overrideOnTime;
+        const markedAt = rec?.markedAt ?? activity?.date ?? "";
+        const isActuallyLate = !!(activity?.deadline && markedAt > activity.deadline);
+        return (
+          <div
+            className="fixed z-50 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-2 text-xs font-semibold border-b border-border" style={{ color: "hsl(var(--muted-foreground))" }}>
+              Status da entrega
+            </div>
+            {isActuallyLate && !isCurrentlyOverridden && (
+              <button
+                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, true);
+                  setContextMenu(null);
+                }}
+              >
+                ✓ Marcar como feito no prazo
+              </button>
+            )}
+            {isCurrentlyOverridden && (
+              <button
+                className="block w-full text-left rounded px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, false);
+                  setContextMenu(null);
+                }}
+              >
+                ⟲ Reverter para "atrasado"
+              </button>
+            )}
+            {!isActuallyLate && !isCurrentlyOverridden && (
+              <div className="px-3 py-2 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                Esta entrega está dentro do prazo.
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
