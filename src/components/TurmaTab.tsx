@@ -64,18 +64,6 @@ export function TurmaTab({
   const [newMinTaskTotal, setNewMinTaskTotal] = useState(20);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
   const [showMinTaskImportModal, setShowMinTaskImportModal] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, [contextMenu]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
