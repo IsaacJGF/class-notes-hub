@@ -245,6 +245,17 @@ export function useSchoolData() {
     [data.activityRecords]
   );
 
+  const getActivityRecordFull = useCallback(
+    (studentId: string, activityId: string): ActivityRecord | null => {
+      return (
+        data.activityRecords.find(
+          (r) => r.studentId === studentId && r.activityId === activityId
+        ) ?? null
+      );
+    },
+    [data.activityRecords]
+  );
+
   // --- Class Records (participation + extra point per date) ---
   const setClassRecordField = useCallback((studentId: string, date: string, field: "participated" | "extraPoint") => {
     setData((prev) => {
