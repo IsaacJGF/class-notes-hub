@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { SchoolData } from "@/types";
+import { SchoolData, ActivityRecord } from "@/types";
 import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
@@ -9,13 +9,15 @@ interface Props {
   data: SchoolData;
   toggleAttendance: (studentId: string, date: string) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
+  getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
+  setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
 }
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, setMinTaskRecord, getMinTaskRecord }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
