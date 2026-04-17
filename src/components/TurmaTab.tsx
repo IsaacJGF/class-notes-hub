@@ -462,15 +462,22 @@ export function TurmaTab({
                       <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Ponto Extra</th>
                       {dailyActivities.map((a) => (
                         <th key={a.id} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                          <div className="flex items-center justify-center gap-1">
-                            {a.name}
-                            <button
-                              onClick={() => removeActivity(a.id)}
-                              className="ml-1 rounded-full p-0.5 opacity-50 hover:opacity-100 transition-opacity"
-                              title="Remover atividade"
-                            >
-                              <Trash2 size={10} />
-                            </button>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1">
+                              {a.name}
+                              <button
+                                onClick={() => removeActivity(a.id)}
+                                className="ml-1 rounded-full p-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                                title="Remover atividade"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                            {a.deadline && (
+                              <span className="text-[10px] font-normal opacity-70" title={`Prazo: ${formatDate(a.deadline)}`}>
+                                Prazo: {formatShort(a.deadline)}
+                              </span>
+                            )}
                           </div>
                         </th>
                       ))}
