@@ -787,7 +787,23 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Part./Aulas</th>
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos Extra</th>
                         {attendanceDates.map((d) => (
-                          <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>{formatDate(d)}</th>
+                          <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
+                            {filterTurma && onOpenTurma ? (
+                              <button
+                                onClick={() => {
+                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                  if (t) onOpenTurma(t.id, d);
+                                }}
+                                className="underline-offset-2 hover:underline"
+                                style={{ color: "hsl(var(--primary))" }}
+                                title="Abrir planilha da turma neste dia"
+                              >
+                                {formatDate(d)}
+                              </button>
+                            ) : (
+                              formatDate(d)
+                            )}
+                          </th>
                         ))}
                       </tr>
                     </thead>
