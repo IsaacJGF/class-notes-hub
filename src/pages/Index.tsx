@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSchoolData } from "@/hooks/useSchoolData";
 import { StudentRegistration } from "@/components/StudentRegistration";
 import { SummaryTab } from "@/components/SummaryTab";
@@ -9,6 +9,8 @@ type TabId = "cadastro" | "resumo" | string; // string = turma id
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("cadastro");
+  const [summaryInitialTurma, setSummaryInitialTurma] = useState<string | undefined>(undefined);
+  const [turmaInitialDate, setTurmaInitialDate] = useState<string | undefined>(undefined);
   const school = useSchoolData();
   const sortedTurmas = [...school.data.turmas].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
@@ -24,6 +26,16 @@ const Index = () => {
   ];
 
   const currentTurma = school.data.turmas.find((t) => t.id === activeTab);
+
+  const handleOpenSummaryFromTurma = (turmaName: string) => {
+    setSummaryInitialTurma(turmaName);
+    setActiveTab("resumo");
+  };
+
+  const handleOpenTurmaFromSummary = (turmaId: string, date?: string) => {
+    setTurmaInitialDate(date);
+    setActiveTab(turmaId);
+  };
 
   return (
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "hsl(var(--background))" }}>
@@ -99,6 +111,9 @@ const Index = () => {
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
             setMinTaskRecord={school.setMinTaskRecord}
             getMinTaskRecord={school.getMinTaskRecord}
+            initialTurma={summaryInitialTurma}
+            onInitialTurmaConsumed={() => setSummaryInitialTurma(undefined)}
+            onOpenTurma={handleOpenTurmaFromSummary}
           />
         )}
         {currentTurma && (
@@ -121,6 +136,9 @@ const Index = () => {
             removeMinTask={school.removeMinTask}
             setMinTaskRecord={school.setMinTaskRecord}
             getMinTaskRecord={school.getMinTaskRecord}
+            initialDate={turmaInitialDate}
+            onInitialDateConsumed={() => setTurmaInitialDate(undefined)}
+            onOpenSummary={() => handleOpenSummaryFromTurma(currentTurma.name)}
           />
         )}
       </main>
