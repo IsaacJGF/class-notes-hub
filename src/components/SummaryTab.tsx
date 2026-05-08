@@ -522,6 +522,19 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
           >
             Limpar datas
           </button>
+          {filterTurma && onOpenTurma && (
+            <button
+              onClick={() => {
+                const t = data.turmas.find((tu) => tu.name === filterTurma);
+                if (t) onOpenTurma(t.id);
+              }}
+              className="flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto sm:ml-auto"
+              style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+              title="Abrir planilha desta turma"
+            >
+              <GraduationCap size={14} /> Abrir planilha da turma
+            </button>
+          )}
         </div>
       </div>
 
