@@ -13,13 +13,23 @@ interface Props {
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
+  initialTurma?: string;
+  onInitialTurmaConsumed?: () => void;
+  onOpenTurma?: (turmaId: string, date?: string) => void;
 }
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
+
+  useEffect(() => {
+    if (initialTurma) {
+      setFilterTurma(initialTurma);
+      onInitialTurmaConsumed?.();
+    }
+  }, [initialTurma, onInitialTurmaConsumed]);
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities" | "mintasks">("attendance");
