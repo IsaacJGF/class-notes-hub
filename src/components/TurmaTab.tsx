@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData, Turma, Activity, MinTask, ActivityRecord } from "@/types";
-import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, CheckCircle, XCircle, CalendarPlus, Download, Search, X, ClipboardList, AlertTriangle, LayoutDashboard } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { MinTaskCsvImportModal } from "@/components/MinTaskCsvImportModal";
@@ -27,6 +27,9 @@ interface Props {
   removeMinTask: (id: string) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
+  initialDate?: string;
+  onInitialDateConsumed?: () => void;
+  onOpenSummary?: () => void;
 }
 
 export function TurmaTab({
@@ -48,6 +51,9 @@ export function TurmaTab({
   removeMinTask,
   setMinTaskRecord,
   getMinTaskRecord,
+  initialDate,
+  onInitialDateConsumed,
+  onOpenSummary,
 }: Props) {
   const [subTab, setSubTab] = useState<SubTab>("diario");
   const [newActivityName, setNewActivityName] = useState("");
@@ -56,6 +62,14 @@ export function TurmaTab({
   const [newActivityDeadline, setNewActivityDeadline] = useState("");
   const [newActivityDeadlineDays, setNewActivityDeadlineDays] = useState(7);
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => {
+    if (initialDate) {
+      setAttendanceDate(initialDate);
+      setSubTab("diario");
+      onInitialDateConsumed?.();
+    }
+  }, [initialDate, onInitialDateConsumed]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -245,6 +259,16 @@ export function TurmaTab({
           </span>
         </div>
         <div className="flex items-center gap-2 sm:ml-auto">
+          {onOpenSummary && (
+            <button
+              onClick={onOpenSummary}
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
+              style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
+              title="Abrir resumo desta turma"
+            >
+              <LayoutDashboard size={12} /> Resumo
+            </button>
+          )}
           <button
             onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"

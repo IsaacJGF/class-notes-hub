@@ -13,13 +13,23 @@ interface Props {
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
+  initialTurma?: string;
+  onInitialTurmaConsumed?: () => void;
+  onOpenTurma?: (turmaId: string, date?: string) => void;
 }
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
+
+  useEffect(() => {
+    if (initialTurma) {
+      setFilterTurma(initialTurma);
+      onInitialTurmaConsumed?.();
+    }
+  }, [initialTurma, onInitialTurmaConsumed]);
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [activeView, setActiveView] = useState<"attendance" | "activities" | "mintasks">("attendance");
@@ -512,6 +522,19 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
           >
             Limpar datas
           </button>
+          {filterTurma && onOpenTurma && (
+            <button
+              onClick={() => {
+                const t = data.turmas.find((tu) => tu.name === filterTurma);
+                if (t) onOpenTurma(t.id);
+              }}
+              className="flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto sm:ml-auto"
+              style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+              title="Abrir planilha desta turma"
+            >
+              <GraduationCap size={14} /> Abrir planilha da turma
+            </button>
+          )}
         </div>
       </div>
 
@@ -764,7 +787,23 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Part./Aulas</th>
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos Extra</th>
                         {attendanceDates.map((d) => (
-                          <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>{formatDate(d)}</th>
+                          <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
+                            {filterTurma && onOpenTurma ? (
+                              <button
+                                onClick={() => {
+                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                  if (t) onOpenTurma(t.id, d);
+                                }}
+                                className="underline-offset-2 hover:underline"
+                                style={{ color: "hsl(var(--primary))" }}
+                                title="Abrir planilha da turma neste dia"
+                              >
+                                {formatDate(d)}
+                              </button>
+                            ) : (
+                              formatDate(d)
+                            )}
+                          </th>
                         ))}
                       </tr>
                     </thead>
@@ -876,8 +915,25 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
                         {filteredActivities.map((a) => (
                           <th key={a.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            <div>{formatDate(a.date)}</div>
-                            <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                            {filterTurma && onOpenTurma ? (
+                              <button
+                                onClick={() => {
+                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                  if (t) onOpenTurma(t.id, a.date);
+                                }}
+                                className="block w-full hover:underline underline-offset-2"
+                                style={{ color: "hsl(var(--primary))" }}
+                                title="Abrir planilha da turma neste dia"
+                              >
+                                <div>{formatDate(a.date)}</div>
+                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                              </button>
+                            ) : (
+                              <>
+                                <div>{formatDate(a.date)}</div>
+                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                              </>
+                            )}
                           </th>
                         ))}
                       </tr>
