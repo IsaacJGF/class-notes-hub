@@ -259,6 +259,16 @@ export function TurmaTab({
           </span>
         </div>
         <div className="flex items-center gap-2 sm:ml-auto">
+          {onOpenSummary && (
+            <button
+              onClick={onOpenSummary}
+              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
+              style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
+              title="Abrir resumo desta turma"
+            >
+              <LayoutDashboard size={12} /> Resumo
+            </button>
+          )}
           <button
             onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
