@@ -915,8 +915,25 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
                         {filteredActivities.map((a) => (
                           <th key={a.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            <div>{formatDate(a.date)}</div>
-                            <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                            {filterTurma && onOpenTurma ? (
+                              <button
+                                onClick={() => {
+                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                  if (t) onOpenTurma(t.id, a.date);
+                                }}
+                                className="block w-full hover:underline underline-offset-2"
+                                style={{ color: "hsl(var(--primary))" }}
+                                title="Abrir planilha da turma neste dia"
+                              >
+                                <div>{formatDate(a.date)}</div>
+                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                              </button>
+                            ) : (
+                              <>
+                                <div>{formatDate(a.date)}</div>
+                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                              </>
+                            )}
                           </th>
                         ))}
                       </tr>
