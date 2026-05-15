@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData, ActivityRecord } from "@/types";
-import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
@@ -13,6 +13,9 @@ interface Props {
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
+  removeActivity: (id: string) => void;
+  removeMinTask: (id: string) => void;
+  removeAttendanceDate: (date: string, turmaName?: string) => void;
   initialTurma?: string;
   onInitialTurmaConsumed?: () => void;
   onOpenTurma?: (turmaId: string, date?: string) => void;
@@ -20,7 +23,7 @@ interface Props {
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord, removeActivity, removeMinTask, removeAttendanceDate, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
 
