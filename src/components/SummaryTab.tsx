@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { SchoolData, ActivityRecord } from "@/types";
-import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
@@ -13,6 +13,9 @@ interface Props {
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
   setMinTaskRecord: (studentId: string, minTaskId: string, questionsDone: number) => void;
   getMinTaskRecord: (studentId: string, minTaskId: string) => number;
+  removeActivity: (id: string) => void;
+  removeMinTask: (id: string) => void;
+  removeAttendanceDate: (date: string, turmaName?: string) => void;
   initialTurma?: string;
   onInitialTurmaConsumed?: () => void;
   onOpenTurma?: (turmaId: string, date?: string) => void;
@@ -20,7 +23,7 @@ interface Props {
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
+export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, setMinTaskRecord, getMinTaskRecord, removeActivity, removeMinTask, removeAttendanceDate, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
 
@@ -788,21 +791,34 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos Extra</th>
                         {attendanceDates.map((d) => (
                           <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            {filterTurma && onOpenTurma ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {filterTurma && onOpenTurma ? (
+                                <button
+                                  onClick={() => {
+                                    const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                    if (t) onOpenTurma(t.id, d);
+                                  }}
+                                  className="underline-offset-2 hover:underline"
+                                  style={{ color: "hsl(var(--primary))" }}
+                                  title="Abrir planilha da turma neste dia"
+                                >
+                                  {formatDate(d)}
+                                </button>
+                              ) : (
+                                formatDate(d)
+                              )}
                               <button
                                 onClick={() => {
-                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
-                                  if (t) onOpenTurma(t.id, d);
+                                  if (confirm(`Apagar a coluna do dia ${formatDate(d)}? Isso removerá presença, participação e ponto extra desse dia para todos os alunos da turma "${filterTurma}". Atividades e tarefas do mesmo dia não serão afetadas.`)) {
+                                    removeAttendanceDate(d, filterTurma || undefined);
+                                  }
                                 }}
-                                className="underline-offset-2 hover:underline"
-                                style={{ color: "hsl(var(--primary))" }}
-                                title="Abrir planilha da turma neste dia"
+                                className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive"
+                                title="Apagar esta coluna"
                               >
-                                {formatDate(d)}
+                                <Trash2 size={11} />
                               </button>
-                            ) : (
-                              formatDate(d)
-                            )}
+                            </div>
                           </th>
                         ))}
                       </tr>
@@ -915,25 +931,38 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
                         {filteredActivities.map((a) => (
                           <th key={a.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            {filterTurma && onOpenTurma ? (
+                            <div className="flex items-start justify-center gap-1">
+                              {filterTurma && onOpenTurma ? (
+                                <button
+                                  onClick={() => {
+                                    const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                    if (t) onOpenTurma(t.id, a.date);
+                                  }}
+                                  className="block hover:underline underline-offset-2"
+                                  style={{ color: "hsl(var(--primary))" }}
+                                  title="Abrir planilha da turma neste dia"
+                                >
+                                  <div>{formatDate(a.date)}</div>
+                                  <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                                </button>
+                              ) : (
+                                <div>
+                                  <div>{formatDate(a.date)}</div>
+                                  <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                                </div>
+                              )}
                               <button
                                 onClick={() => {
-                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
-                                  if (t) onOpenTurma(t.id, a.date);
+                                  if (confirm(`Apagar a atividade "${a.name}" (${formatDate(a.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                    removeActivity(a.id);
+                                  }
                                 }}
-                                className="block w-full hover:underline underline-offset-2"
-                                style={{ color: "hsl(var(--primary))" }}
-                                title="Abrir planilha da turma neste dia"
+                                className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive shrink-0"
+                                title="Apagar esta atividade"
                               >
-                                <div>{formatDate(a.date)}</div>
-                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                                <Trash2 size={11} />
                               </button>
-                            ) : (
-                              <>
-                                <div>{formatDate(a.date)}</div>
-                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
-                              </>
-                            )}
+                            </div>
                           </th>
                         ))}
                       </tr>
@@ -1090,8 +1119,23 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
                           {allFilteredMinTasks.map((t) => (
                             <th key={t.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                              <div>{formatDate(t.date)}</div>
-                              <div className="truncate max-w-16 text-xs opacity-80" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
+                              <div className="flex items-start justify-center gap-1">
+                                <div>
+                                  <div>{formatDate(t.date)}</div>
+                                  <div className="truncate max-w-16 text-xs opacity-80" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Apagar a tarefa mínima "${t.name}" (${formatDate(t.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                      removeMinTask(t.id);
+                                    }
+                                  }}
+                                  className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive shrink-0"
+                                  title="Apagar esta tarefa mínima"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
                             </th>
                           ))}
                         </tr>

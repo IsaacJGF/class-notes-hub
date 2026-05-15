@@ -111,6 +111,9 @@ const Index = () => {
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
             setMinTaskRecord={school.setMinTaskRecord}
             getMinTaskRecord={school.getMinTaskRecord}
+            removeActivity={school.removeActivity}
+            removeMinTask={school.removeMinTask}
+            removeAttendanceDate={school.removeAttendanceDate}
             initialTurma={summaryInitialTurma}
             onInitialTurmaConsumed={() => setSummaryInitialTurma(undefined)}
             onOpenTurma={handleOpenTurmaFromSummary}
