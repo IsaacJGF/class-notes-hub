@@ -183,6 +183,25 @@ export function useSchoolData() {
     [data.attendanceRecords]
   );
 
+  // Remove all attendance + class records for a date, scoped to a turma's students
+  const removeAttendanceDate = useCallback((date: string, turmaName?: string) => {
+    setData((prev) => {
+      const studentIds = turmaName
+        ? new Set(prev.students.filter((s) => s.turma === turmaName).map((s) => s.id))
+        : null;
+      const matches = (sid: string) => (studentIds ? studentIds.has(sid) : true);
+      return {
+        ...prev,
+        attendanceRecords: prev.attendanceRecords.filter(
+          (r) => !(r.date === date && matches(r.studentId))
+        ),
+        classRecords: prev.classRecords.filter(
+          (r) => !(r.date === date && matches(r.studentId))
+        ),
+      };
+    });
+  }, []);
+
   // --- Activity Records ---
   const toggleActivityRecord = useCallback((studentId: string, activityId: string) => {
     setData((prev) => {
@@ -368,6 +387,7 @@ export function useSchoolData() {
     removeActivity,
     toggleAttendance,
     getAttendance,
+    removeAttendanceDate,
     toggleActivityRecord,
     getActivityRecord,
     getActivityRecordFull,
