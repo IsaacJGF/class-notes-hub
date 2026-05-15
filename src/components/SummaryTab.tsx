@@ -931,25 +931,38 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
                         {filteredActivities.map((a) => (
                           <th key={a.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            {filterTurma && onOpenTurma ? (
+                            <div className="flex items-start justify-center gap-1">
+                              {filterTurma && onOpenTurma ? (
+                                <button
+                                  onClick={() => {
+                                    const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                    if (t) onOpenTurma(t.id, a.date);
+                                  }}
+                                  className="block hover:underline underline-offset-2"
+                                  style={{ color: "hsl(var(--primary))" }}
+                                  title="Abrir planilha da turma neste dia"
+                                >
+                                  <div>{formatDate(a.date)}</div>
+                                  <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                                </button>
+                              ) : (
+                                <div>
+                                  <div>{formatDate(a.date)}</div>
+                                  <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                                </div>
+                              )}
                               <button
                                 onClick={() => {
-                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
-                                  if (t) onOpenTurma(t.id, a.date);
+                                  if (confirm(`Apagar a atividade "${a.name}" (${formatDate(a.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                    removeActivity(a.id);
+                                  }
                                 }}
-                                className="block w-full hover:underline underline-offset-2"
-                                style={{ color: "hsl(var(--primary))" }}
-                                title="Abrir planilha da turma neste dia"
+                                className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive shrink-0"
+                                title="Apagar esta atividade"
                               >
-                                <div>{formatDate(a.date)}</div>
-                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
+                                <Trash2 size={11} />
                               </button>
-                            ) : (
-                              <>
-                                <div>{formatDate(a.date)}</div>
-                                <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
-                              </>
-                            )}
+                            </div>
                           </th>
                         ))}
                       </tr>
