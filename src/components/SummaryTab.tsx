@@ -791,21 +791,34 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos Extra</th>
                         {attendanceDates.map((d) => (
                           <th key={d} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            {filterTurma && onOpenTurma ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {filterTurma && onOpenTurma ? (
+                                <button
+                                  onClick={() => {
+                                    const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                    if (t) onOpenTurma(t.id, d);
+                                  }}
+                                  className="underline-offset-2 hover:underline"
+                                  style={{ color: "hsl(var(--primary))" }}
+                                  title="Abrir planilha da turma neste dia"
+                                >
+                                  {formatDate(d)}
+                                </button>
+                              ) : (
+                                formatDate(d)
+                              )}
                               <button
                                 onClick={() => {
-                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
-                                  if (t) onOpenTurma(t.id, d);
+                                  if (confirm(`Apagar a coluna do dia ${formatDate(d)}? Isso removerá presença, participação e ponto extra desse dia para todos os alunos da turma "${filterTurma}". Atividades e tarefas do mesmo dia não serão afetadas.`)) {
+                                    removeAttendanceDate(d, filterTurma || undefined);
+                                  }
                                 }}
-                                className="underline-offset-2 hover:underline"
-                                style={{ color: "hsl(var(--primary))" }}
-                                title="Abrir planilha da turma neste dia"
+                                className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive"
+                                title="Apagar esta coluna"
                               >
-                                {formatDate(d)}
+                                <Trash2 size={11} />
                               </button>
-                            ) : (
-                              formatDate(d)
-                            )}
+                            </div>
                           </th>
                         ))}
                       </tr>
