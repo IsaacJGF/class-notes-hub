@@ -1119,8 +1119,23 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
                           {allFilteredMinTasks.map((t) => (
                             <th key={t.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                              <div>{formatDate(t.date)}</div>
-                              <div className="truncate max-w-16 text-xs opacity-80" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
+                              <div className="flex items-start justify-center gap-1">
+                                <div>
+                                  <div>{formatDate(t.date)}</div>
+                                  <div className="truncate max-w-16 text-xs opacity-80" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Apagar a tarefa mínima "${t.name}" (${formatDate(t.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                      removeMinTask(t.id);
+                                    }
+                                  }}
+                                  className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive shrink-0"
+                                  title="Apagar esta tarefa mínima"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
                             </th>
                           ))}
                         </tr>
