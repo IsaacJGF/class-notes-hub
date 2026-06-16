@@ -799,7 +799,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                                     if (t) onOpenTurma(t.id, d);
                                   }}
                                   className="underline-offset-2 hover:underline"
-                                  style={{ color: "hsl(var(--primary))" }}
+                                  style={{ color: "hsl(var(--table-header-foreground))" }}
                                   title="Abrir planilha da turma neste dia"
                                 >
                                   {formatDate(d)}
@@ -949,7 +949,7 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                                   if (t) onOpenTurma(t.id, a.date);
                                 }}
                                 className="block w-full px-3 hover:underline underline-offset-2"
-                                style={{ color: "hsl(var(--primary))" }}
+                                style={{ color: "hsl(var(--table-header-foreground))" }}
                                 title="Abrir planilha da turma neste dia"
                               >
                                 <div>{formatDate(a.date)}</div>
