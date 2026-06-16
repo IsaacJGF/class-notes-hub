@@ -1,4 +1,75 @@
-# Welcome to your Lovable project
+# Diário do Professor
+
+Aplicativo desktop Windows feito com Electron, Vite, React e Tailwind CSS.
+
+## Fluxo recomendado
+
+Use uma cópia local do repositório. Depois da primeira vez, você só precisa entrar na pasta e atualizar com `git pull`.
+
+```sh
+git clone https://github.com/IsaacJGF/class-notes-hub.git
+cd class-notes-hub
+npm install
+```
+
+Para atualizar sua cópia local:
+
+```sh
+git pull
+npm install
+```
+
+## Rodar em desenvolvimento
+
+```sh
+npm run dev
+```
+
+## Criar instalador Windows
+
+```sh
+npm run release:win
+```
+
+O instalador será gerado na pasta `release`.
+
+## Versionar o app
+
+Use um dos comandos abaixo antes de gerar uma nova versão:
+
+```sh
+npm run version:patch
+npm run version:minor
+npm run version:major
+```
+
+Exemplo para subir de `1.0.0` para `1.0.1`:
+
+```sh
+npm run version:patch
+npm run release:win
+```
+
+## Publicar atualização automática
+
+O app está configurado para buscar atualizações nos releases do GitHub.
+
+Para publicar uma nova versão:
+
+```sh
+npm run version:patch
+npm run publish:win
+```
+
+Esse comando gera o instalador e publica os arquivos necessários para o atualizador automático. Para publicar no GitHub, a máquina precisa estar autenticada com permissão de escrita no repositório.
+
+## Atualização automática
+
+Quando o app estiver instalado e uma nova versão for publicada nos releases do GitHub, ele verifica atualizações ao abrir. Se houver uma versão nova, baixa automaticamente e pede para reiniciar o aplicativo.
+
+---
+
+# Lovable project
 
 ## Project info
 
