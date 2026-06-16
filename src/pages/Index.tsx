@@ -54,7 +54,7 @@ const Index = () => {
             Diário do Professor
           </h1>
           <p className="text-[10px] sm:text-xs opacity-70 hidden sm:block" style={{ color: "hsl(var(--primary-foreground))" }}>
-            Controle de chamada e atividades
+            Controle de atividades
           </p>
         </div>
       </header>
