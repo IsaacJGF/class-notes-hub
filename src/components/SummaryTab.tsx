@@ -930,39 +930,37 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pendentes</th>
                         <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
                         {filteredActivities.map((a) => (
-                          <th key={a.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                            <div className="flex items-start justify-center gap-1">
-                              {filterTurma && onOpenTurma ? (
-                                <button
-                                  onClick={() => {
-                                    const t = data.turmas.find((tu) => tu.name === filterTurma);
-                                    if (t) onOpenTurma(t.id, a.date);
-                                  }}
-                                  className="block hover:underline underline-offset-2"
-                                  style={{ color: "hsl(var(--primary))" }}
-                                  title="Abrir planilha da turma neste dia"
-                                >
-                                  <div>{formatDate(a.date)}</div>
-                                  <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
-                                </button>
-                              ) : (
-                                <div>
-                                  <div>{formatDate(a.date)}</div>
-                                  <div className="truncate max-w-16 text-xs opacity-80" title={a.name}>{a.name}</div>
-                                </div>
-                              )}
+                          <th key={a.id} className="sticky top-0 z-20 text-center relative" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "8rem" }}>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Apagar a atividade "${a.name}" (${formatDate(a.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                  removeActivity(a.id);
+                                }
+                              }}
+                              className="absolute top-0.5 right-0.5 rounded p-0.5 opacity-40 hover:opacity-100 hover:text-destructive"
+                              title="Apagar esta atividade"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                            {filterTurma && onOpenTurma ? (
                               <button
                                 onClick={() => {
-                                  if (confirm(`Apagar a atividade "${a.name}" (${formatDate(a.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
-                                    removeActivity(a.id);
-                                  }
+                                  const t = data.turmas.find((tu) => tu.name === filterTurma);
+                                  if (t) onOpenTurma(t.id, a.date);
                                 }}
-                                className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive shrink-0"
-                                title="Apagar esta atividade"
+                                className="block w-full px-3 hover:underline underline-offset-2"
+                                style={{ color: "hsl(var(--primary))" }}
+                                title="Abrir planilha da turma neste dia"
                               >
-                                <Trash2 size={11} />
+                                <div>{formatDate(a.date)}</div>
+                                <div className="text-xs opacity-80 whitespace-normal break-words leading-tight" title={a.name}>{a.name}</div>
                               </button>
-                            </div>
+                            ) : (
+                              <div className="px-3">
+                                <div>{formatDate(a.date)}</div>
+                                <div className="text-xs opacity-80 whitespace-normal break-words leading-tight" title={a.name}>{a.name}</div>
+                              </div>
+                            )}
                           </th>
                         ))}
                       </tr>
@@ -1118,23 +1116,21 @@ export function SummaryTab({ data, toggleAttendance, toggleActivityRecord, getAc
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total Possível</th>
                           <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
                           {allFilteredMinTasks.map((t) => (
-                            <th key={t.id} className="sticky top-0 z-20 text-center min-w-16" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                              <div className="flex items-start justify-center gap-1">
-                                <div>
-                                  <div>{formatDate(t.date)}</div>
-                                  <div className="truncate max-w-16 text-xs opacity-80" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    if (confirm(`Apagar a tarefa mínima "${t.name}" (${formatDate(t.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
-                                      removeMinTask(t.id);
-                                    }
-                                  }}
-                                  className="rounded p-0.5 opacity-50 hover:opacity-100 hover:text-destructive shrink-0"
-                                  title="Apagar esta tarefa mínima"
-                                >
-                                  <Trash2 size={11} />
-                                </button>
+                            <th key={t.id} className="sticky top-0 z-20 text-center relative" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "8rem" }}>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Apagar a tarefa mínima "${t.name}" (${formatDate(t.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                    removeMinTask(t.id);
+                                  }
+                                }}
+                                className="absolute top-0.5 right-0.5 rounded p-0.5 opacity-40 hover:opacity-100 hover:text-destructive"
+                                title="Apagar esta tarefa mínima"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                              <div className="px-3">
+                                <div>{formatDate(t.date)}</div>
+                                <div className="text-xs opacity-80 whitespace-normal break-words leading-tight" title={`${t.name} (/${t.totalQuestions})`}>{t.name}</div>
                               </div>
                             </th>
                           ))}
