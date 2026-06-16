@@ -1,7 +1,7 @@
 {
   "name": "diario-do-professor",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Diário do Professor (offline, dados locais) - app desktop Windows via Electron + Vite",
   "author": "Isaac",
   "license": "UNLICENSED",
@@ -35,7 +35,22 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Diário do Professor"
     }
   },
   "dependencies": {
