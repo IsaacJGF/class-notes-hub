@@ -54,7 +54,7 @@ const Index = () => {
             Diário do Professor
           </h1>
           <p className="text-[10px] sm:text-xs opacity-70 hidden sm:block" style={{ color: "hsl(var(--primary-foreground))" }}>
-            Controle de chamada e atividades
+            Controle de atividades
           </p>
         </div>
       </header>
@@ -105,15 +105,10 @@ const Index = () => {
         {activeTab === "resumo" && (
           <SummaryTab
             data={school.data}
-            toggleAttendance={school.toggleAttendance}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
-            setMinTaskRecord={school.setMinTaskRecord}
-            getMinTaskRecord={school.getMinTaskRecord}
             removeActivity={school.removeActivity}
-            removeMinTask={school.removeMinTask}
-            removeAttendanceDate={school.removeAttendanceDate}
             initialTurma={summaryInitialTurma}
             onInitialTurmaConsumed={() => setSummaryInitialTurma(undefined)}
             onOpenTurma={handleOpenTurmaFromSummary}
@@ -125,20 +120,10 @@ const Index = () => {
             data={school.data}
             addActivity={school.addActivity}
             removeActivity={school.removeActivity}
-            toggleAttendance={school.toggleAttendance}
-            getAttendance={school.getAttendance}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecord={school.getActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
-            toggleParticipation={school.toggleParticipation}
-            toggleExtraPoint={school.toggleExtraPoint}
-            getParticipation={school.getParticipation}
-            getExtraPoint={school.getExtraPoint}
-            addMinTask={school.addMinTask}
-            removeMinTask={school.removeMinTask}
-            setMinTaskRecord={school.setMinTaskRecord}
-            getMinTaskRecord={school.getMinTaskRecord}
             initialDate={turmaInitialDate}
             onInitialDateConsumed={() => setTurmaInitialDate(undefined)}
             onOpenSummary={() => handleOpenSummaryFromTurma(currentTurma.name)}

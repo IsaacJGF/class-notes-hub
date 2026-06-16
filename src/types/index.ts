@@ -19,13 +19,6 @@ export interface Activity {
   createdAt: string;
 }
 
-export interface AttendanceRecord {
-  id: string;
-  studentId: string;
-  date: string; // YYYY-MM-DD
-  present: boolean;
-}
-
 export interface ActivityRecord {
   id: string;
   studentId: string;
@@ -35,37 +28,9 @@ export interface ActivityRecord {
   overrideOnTime?: boolean; // se true, professor forçou "no prazo" mesmo se markedAt > deadline
 }
 
-export interface ClassRecord {
-  id: string;
-  studentId: string;
-  date: string; // YYYY-MM-DD
-  participated: boolean;
-  extraPoint: boolean;
-}
-
-export interface MinTask {
-  id: string;
-  turmaId: string;
-  name: string;
-  date: string; // YYYY-MM-DD
-  totalQuestions: number;
-  createdAt: string;
-}
-
-export interface MinTaskRecord {
-  id: string;
-  studentId: string;
-  minTaskId: string;
-  questionsDone: number;
-}
-
 export interface SchoolData {
   students: Student[];
   turmas: Turma[];
   activities: Activity[];
-  attendanceRecords: AttendanceRecord[];
   activityRecords: ActivityRecord[];
-  classRecords: ClassRecord[];
-  minTasks: MinTask[];
-  minTaskRecords: MinTaskRecord[];
 }
