@@ -23,6 +23,7 @@
     "dist:win": "npm run build && electron-builder --win --x64",
     "release:win": "npm run build && electron-builder --win --x64 --publish never",
     "publish:win": "npm run build && electron-builder --win --x64 --publish always",
+    "publish:patch:win": "npm run version:patch && npm run publish:win",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version"
