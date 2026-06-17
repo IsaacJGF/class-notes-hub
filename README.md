@@ -63,9 +63,20 @@ npm run publish:win
 
 Esse comando gera o instalador e publica os arquivos necessários para o atualizador automático. Para publicar no GitHub, a máquina precisa estar autenticada com permissão de escrita no repositório.
 
+No Windows PowerShell, configure um token do GitHub com permissão para publicar releases antes de rodar o comando:
+
+```sh
+$env:GH_TOKEN="seu_token_do_github"
+npm run publish:patch:win
+```
+
+O comando `publish:patch:win` aumenta a versão automaticamente, por exemplo de `1.0.0` para `1.0.1`, gera o instalador e publica a atualização.
+
 ## Atualização automática
 
 Quando o app estiver instalado e uma nova versão for publicada nos releases do GitHub, ele verifica atualizações ao abrir. Se houver uma versão nova, baixa automaticamente e pede para reiniciar o aplicativo.
+
+Observação: quem instalou uma versão antiga que ainda não tinha atualização automática precisa instalar manualmente a primeira versão com esse recurso. Depois disso, as próximas versões chegam pelo próprio aplicativo.
 
 ---
 
