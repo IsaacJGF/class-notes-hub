@@ -1,12 +1,26 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { SchoolData, ActivityRecord } from "@/types";
+import { AcademicTerm, SchoolData, ActivityRecord } from "@/types";
 import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
+import {
+  formatPoints,
+  formatActivityExportResult,
+  getIndexedActivityRecord,
+  getStudentTermSummary,
+  getTermLabel,
+  getTermTotalPoints,
+  indexActivityRecords,
+  isActivityLate,
+  normalizeAcademicTerm,
+  roundGrade,
+} from "@/lib/academicTerms";
 
 interface Props {
   data: SchoolData;
+  selectedTerm: AcademicTerm;
+  setTermTotalPoints: (turmaId: string, term: AcademicTerm, totalPoints: number) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
@@ -18,7 +32,7 @@ interface Props {
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, removeActivity, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
+export function SummaryTab({ data, selectedTerm, setTermTotalPoints, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, removeActivity, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
 
@@ -110,21 +124,46 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
     return `${widthInCh}ch`;
   }, [filteredStudents]);
 
+  const termActivities = useMemo(
+    () => data.activities.filter((activity) => normalizeAcademicTerm(activity.term) === selectedTerm),
+    [data.activities, selectedTerm],
+  );
+
   const filteredActivities = useMemo(() => {
-    let acts = data.activities;
+    let acts = termActivities;
     if (filterTurma) {
       const turma = data.turmas.find((t) => t.name === filterTurma);
       if (turma) acts = acts.filter((a) => a.turmaId === turma.id);
     }
     if (filterDateFrom) acts = acts.filter((a) => a.date >= filterDateFrom);
     if (filterDateTo) acts = acts.filter((a) => a.date <= filterDateTo);
-    return acts.sort((a, b) => a.date.localeCompare(b.date));
-  }, [data.activities, data.turmas, filterTurma, filterDateFrom, filterDateTo]);
+    return [...acts].sort((a, b) => a.date.localeCompare(b.date));
+  }, [termActivities, data.turmas, filterTurma, filterDateFrom, filterDateTo]);
+
+  const selectedTurma = data.turmas.find((turma) => turma.name === filterTurma);
+  const termTotalPoints = selectedTurma
+    ? getTermTotalPoints(data.termSettings, selectedTurma.id, selectedTerm)
+    : 0;
+  const recordIndex = useMemo(() => indexActivityRecords(data.activityRecords), [data.activityRecords]);
+  const studentSummaries = useMemo(
+    () => new Map(
+      allFilteredStudents.map((student) => {
+        const turma = data.turmas.find((item) => item.name === student.turma);
+        const activities = turma
+          ? termActivities.filter((activity) => activity.turmaId === turma.id)
+          : [];
+        const totalPoints = turma
+          ? getTermTotalPoints(data.termSettings, turma.id, selectedTerm)
+          : 0;
+
+        return [student.id, getStudentTermSummary(student.id, activities, recordIndex, totalPoints)];
+      }),
+    ),
+    [allFilteredStudents, termActivities, data.turmas, data.termSettings, selectedTerm, recordIndex],
+  );
 
   const getActivityStatus = (studentId: string, activityId: string) => {
-    const record = data.activityRecords.find(
-      (r) => r.studentId === studentId && r.activityId === activityId
-    );
+    const record = getIndexedActivityRecord(recordIndex, studentId, activityId);
     if (!record) return null;
     return record.done;
   };
@@ -161,38 +200,53 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
 
   const exportActivitiesExcel = () => {
     const headers = [
-      "Aluno", "Turma", "Entregues", "Pendentes", "% Entrega",
-      ...filteredActivities.map((a) => `${formatDate(a.date)} - ${a.name}`),
+      "Aluno",
+      "Turma",
+      "Trimestre",
+      "No prazo",
+      "Atrasadas (70%)",
+      "Pendentes",
+      "Aproveitamento (%)",
+      "Nota final",
+      "Nota máxima",
+      "Valor por atividade",
+      ...filteredActivities.map((activity) => {
+        const deadline = activity.deadline ? ` | prazo ${formatDate(activity.deadline)}` : "";
+        return `${formatDate(activity.date)} - ${activity.name}${deadline}`;
+      }),
     ];
     const rows = filteredStudents.map((student) => {
-      const studentActivities = filteredActivities.filter((a) => {
+      const summary = studentSummaries.get(student.id)!;
+      const actColumns = filteredActivities.map((activity) => {
         const turma = data.turmas.find((t) => t.name === student.turma);
-        return turma?.id === a.turmaId;
+        if (turma?.id !== activity.turmaId) return "—";
+
+        const record = getIndexedActivityRecord(recordIndex, student.id, activity.id);
+        return formatActivityExportResult(activity, record, summary.activityValue);
       });
-      const done = studentActivities.filter((a) => {
-        const r = data.activityRecords.find(
-          (r) => r.studentId === student.id && r.activityId === a.id
-        );
-        return r?.done;
-      }).length;
-      const total = studentActivities.length;
-      const pct = total > 0 ? Math.round((done / total) * 100) : "";
-      const actColumns = filteredActivities.map((a) => {
-        const turma = data.turmas.find((t) => t.name === student.turma);
-        if (turma?.id !== a.turmaId) return "—";
-        const s = getActivityStatus(student.id, a.id);
-        return s === true ? "Feito" : s === false ? "Pendente" : "";
-      });
-      return [student.name, student.turma, done, total - done, pct !== "" ? `${pct}%` : "", ...actColumns];
+
+      return [
+        student.name,
+        student.turma,
+        getTermLabel(selectedTerm),
+        summary.onTime,
+        summary.late,
+        summary.pending,
+        summary.weightedPercentage,
+        summary.finalGrade,
+        summary.totalPoints,
+        roundGrade(summary.activityValue),
+        ...actColumns,
+      ];
     });
     const tableData = [headers, ...rows];
     const ws = XLSX.utils.aoa_to_sheet(tableData);
     ws["!cols"] = getColumnWidths(tableData);
     centerColumnsExceptStudent(ws, tableData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Atividades");
+    XLSX.utils.book_append_sheet(wb, ws, `${selectedTerm}º trimestre`);
     const turmaLabel = filterTurma ? filterTurma.replace(/\s+/g, "_") : "geral";
-    XLSX.writeFile(wb, `resumo_atividades_${turmaLabel}.xlsx`);
+    XLSX.writeFile(wb, `resumo_atividades_${turmaLabel}_${selectedTerm}o_trimestre.xlsx`);
   };
 
   // ---- Alerts ----
@@ -201,23 +255,19 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
   const alerts = useMemo<AlertItem[]>(() => {
     const result: AlertItem[] = [];
     for (const student of allFilteredStudents) {
-      const studentActivities = filteredActivities.filter((a) => {
-        const turma = data.turmas.find((t) => t.name === student.turma);
-        return turma?.id === a.turmaId;
+      const summary = studentSummaries.get(student.id);
+      if (!summary || summary.activityCount === 0 || summary.weightedPercentage >= activityThreshold) continue;
+
+      result.push({
+        studentId: student.id,
+        studentName: student.name,
+        turma: student.turma,
+        pct: summary.weightedPercentage,
+        detail: `${summary.onTime} no prazo, ${summary.late} atrasada(s) (${formatPoints(summary.weightedPercentage)}%)`,
       });
-      if (studentActivities.length > 0) {
-        const done = studentActivities.filter((a) => {
-          const r = data.activityRecords.find((r) => r.studentId === student.id && r.activityId === a.id);
-          return r?.done;
-        }).length;
-        const actPct = Math.round((done / studentActivities.length) * 100);
-        if (actPct < activityThreshold) {
-          result.push({ studentId: student.id, studentName: student.name, turma: student.turma, pct: actPct, detail: `${done}/${studentActivities.length} atividades (${actPct}%)` });
-        }
-      }
     }
     return result.sort((a, b) => a.pct - b.pct);
-  }, [allFilteredStudents, filteredActivities, data, activityThreshold]);
+  }, [allFilteredStudents, studentSummaries, activityThreshold]);
 
   const alertStudentIds = useMemo(() => new Set(alerts.map((a) => a.studentId)), [alerts]);
 
@@ -245,6 +295,17 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
             </select>
           </div>
           <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
+              Trimestre
+            </span>
+            <span
+              className="flex min-h-[40px] items-center rounded border border-border px-3 text-sm font-medium"
+              style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
+            >
+              {getTermLabel(selectedTerm)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
               Data inicial
             </label>
@@ -266,6 +327,22 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
               onChange={(e) => setFilterDateTo(e.target.value)}
             />
           </div>
+          {selectedTurma && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
+                Nota máxima
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="0.1"
+                value={termTotalPoints || ""}
+                onChange={(event) => setTermTotalPoints(selectedTurma.id, selectedTerm, Number(event.target.value))}
+                placeholder="0,0"
+                className="min-h-[40px] w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-24"
+              />
+            </label>
+          )}
           <button
             onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
             className="rounded border border-border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80 min-h-[40px] touch-manipulation w-full sm:w-auto"
@@ -435,7 +512,7 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
             <span className="section-card-title">Resumo de Atividades</span>
             <div className="flex items-center gap-3">
               <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                {filteredActivities.length} atividade(s) no período
+                {filteredActivities.length} atividade(s) · nota máxima {formatPoints(termTotalPoints)}
               </span>
               <button
                 onClick={exportActivitiesExcel}
@@ -457,9 +534,11 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
                   <tr>
                     <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", width: studentNameColWidth, minWidth: studentNameColWidth }}>Aluno</th>
                     <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Turma</th>
-                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Entregues</th>
+                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>No prazo</th>
+                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Atrasadas</th>
                     <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pendentes</th>
-                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Entrega</th>
+                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
+                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Nota final</th>
                     {filteredActivities.map((a) => (
                       <th key={a.id} className="sticky top-0 z-20 text-center relative" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "8rem" }}>
                         <button
@@ -498,18 +577,8 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
                 </thead>
                 <tbody>
                   {filteredStudents.map((student) => {
-                    const studentActivities = filteredActivities.filter((a) => {
-                      const turma = data.turmas.find((t) => t.name === student.turma);
-                      return turma?.id === a.turmaId;
-                    });
-                    const done = studentActivities.filter((a) => {
-                      const r = data.activityRecords.find(
-                        (r) => r.studentId === student.id && r.activityId === a.id
-                      );
-                      return r?.done;
-                    }).length;
-                    const total = studentActivities.length;
-                    const pct = total > 0 ? Math.round((done / total) * 100) : null;
+                    const summary = studentSummaries.get(student.id)!;
+                    const pct = summary.activityCount > 0 ? summary.weightedPercentage : null;
 
                     return (
                       <tr key={student.id} style={alertStudentIds.has(student.id) ? { backgroundColor: "hsl(var(--warning-light))" } : undefined}>
@@ -531,10 +600,13 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
                           </span>
                         </td>
                         <td>
-                          <span style={{ color: "hsl(var(--done))" }} className="font-semibold">{done}</span>
+                          <span style={{ color: "hsl(var(--done))" }} className="font-semibold">{summary.onTime}</span>
                         </td>
                         <td>
-                          <span style={{ color: "hsl(var(--not-done))" }} className="font-semibold">{total - done}</span>
+                          <span style={{ color: "hsl(var(--warning))" }} className="font-semibold">{summary.late}</span>
+                        </td>
+                        <td>
+                          <span style={{ color: "hsl(var(--not-done))" }} className="font-semibold">{summary.pending}</span>
                         </td>
                         <td>
                           {pct !== null ? (
@@ -546,11 +618,19 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
                                   : { backgroundColor: "hsl(var(--not-done-light))", color: "hsl(var(--not-done))" }
                               }
                             >
-                              {pct}%
+                              {formatPoints(pct)}%
                             </span>
                           ) : (
                             <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>—</span>
                           )}
+                        </td>
+                        <td>
+                          <span className="font-bold" style={{ color: "hsl(var(--primary))" }}>
+                            {formatPoints(summary.finalGrade)}
+                          </span>
+                          <span className="ml-1 text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            / {formatPoints(summary.totalPoints)}
+                          </span>
                         </td>
                         {filteredActivities.map((a) => {
                           const turma = data.turmas.find((t) => t.name === student.turma);
@@ -561,7 +641,7 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
                           const rec = getActivityRecordFull(student.id, a.id);
                           const isDone = status === true;
                           const markedAt = rec?.markedAt;
-                          const isLate = !!(isDone && a.deadline && !rec?.overrideOnTime && markedAt && markedAt > a.deadline);
+                          const isLate = isActivityLate(a, rec);
                           const overridden = !!rec?.overrideOnTime;
                           const tooltip = !isDone
                             ? (status === false ? "Pendente — clique para marcar como feito" : "Marcar")
@@ -608,6 +688,7 @@ export function SummaryTab({ data, toggleActivityRecord, getActivityRecordFull, 
       {mainView === "graficos" && (
         <ChartsSubpage
           data={data}
+          selectedTerm={selectedTerm}
           filterTurma={filterTurma}
           filterDateFrom={filterDateFrom}
           filterDateTo={filterDateTo}
