@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSchoolData } from "@/hooks/useSchoolData";
 import { StudentRegistration } from "@/components/StudentRegistration";
 import { SummaryTab } from "@/components/SummaryTab";
 import { TurmaTab } from "@/components/TurmaTab";
+import { AcademicTerm } from "@/types";
+import { ACADEMIC_TERMS, getTermLabel } from "@/lib/academicTerms";
 import { GraduationCap, LayoutDashboard, Users } from "lucide-react";
 
 type TabId = "cadastro" | "resumo" | string; // string = turma id
@@ -11,6 +13,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("cadastro");
   const [summaryInitialTurma, setSummaryInitialTurma] = useState<string | undefined>(undefined);
   const [turmaInitialDate, setTurmaInitialDate] = useState<string | undefined>(undefined);
+  const [selectedTerm, setSelectedTerm] = useState<AcademicTerm>(1);
   const school = useSchoolData();
   const sortedTurmas = [...school.data.turmas].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
@@ -57,6 +60,21 @@ const Index = () => {
             Controle de atividades
           </p>
         </div>
+        <label className="ml-auto flex items-center gap-2 text-xs" style={{ color: "hsl(var(--primary-foreground))" }}>
+          <span className="hidden sm:inline opacity-80">Período</span>
+          <select
+            value={selectedTerm}
+            onChange={(event) => setSelectedTerm(Number(event.target.value) as AcademicTerm)}
+            className="rounded border border-white/25 bg-white/10 px-2 py-1.5 text-xs font-semibold outline-none focus:border-white/60"
+            aria-label="Selecionar trimestre"
+          >
+            {ACADEMIC_TERMS.map((term) => (
+              <option key={term} value={term} className="text-slate-900">
+                {getTermLabel(term)}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
 
       {/* Tab bar - scrollable, touch-friendly */}
@@ -105,6 +123,8 @@ const Index = () => {
         {activeTab === "resumo" && (
           <SummaryTab
             data={school.data}
+            selectedTerm={selectedTerm}
+            setTermTotalPoints={school.setTermTotalPoints}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
@@ -118,6 +138,8 @@ const Index = () => {
           <TurmaTab
             turma={currentTurma}
             data={school.data}
+            selectedTerm={selectedTerm}
+            setTermTotalPoints={school.setTermTotalPoints}
             addActivity={school.addActivity}
             removeActivity={school.removeActivity}
             toggleActivityRecord={school.toggleActivityRecord}

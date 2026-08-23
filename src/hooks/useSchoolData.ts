@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { SchoolData, Student, Turma, Activity, ActivityRecord } from "@/types";
+import { AcademicTerm, SchoolData, Student, Turma, Activity, ActivityRecord, TermSettings } from "@/types";
+import { formatLocalDate, normalizeSchoolData } from "@/lib/academicTerms";
 
 const STORAGE_KEY = "school_control_data";
 
@@ -8,17 +9,8 @@ const defaultData: SchoolData = {
   turmas: [],
   activities: [],
   activityRecords: [],
+  termSettings: [],
 };
-
-function normalizeSchoolData(rawData: unknown): SchoolData {
-  const parsedData = (rawData && typeof rawData === "object" ? rawData : {}) as Partial<SchoolData>;
-  return {
-    students: Array.isArray(parsedData.students) ? parsedData.students : [],
-    turmas: Array.isArray(parsedData.turmas) ? parsedData.turmas : [],
-    activities: Array.isArray(parsedData.activities) ? parsedData.activities : [],
-    activityRecords: Array.isArray(parsedData.activityRecords) ? parsedData.activityRecords : [],
-  };
-}
 
 function generateId(): string {
   return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
@@ -48,7 +40,20 @@ export function useSchoolData() {
         turma: turma.name,
         createdAt: new Date().toISOString(),
       };
-      return { ...prev, students: [...prev.students, student] };
+      const pendingRecords: ActivityRecord[] = prev.activities
+        .filter((activity) => activity.turmaId === turmaId)
+        .map((activity) => ({
+          id: generateId(),
+          studentId: student.id,
+          activityId: activity.id,
+          done: false,
+        }));
+
+      return {
+        ...prev,
+        students: [...prev.students, student],
+        activityRecords: [...prev.activityRecords, ...pendingRecords],
+      };
     });
   }, []);
 
@@ -75,24 +80,59 @@ export function useSchoolData() {
   }, [data.turmas]);
 
   const removeTurma = useCallback((id: string) => {
-    const turma = data.turmas.find((t) => t.id === id);
-    if (!turma) return;
-    setData((prev) => ({
-      ...prev,
-      turmas: prev.turmas.filter((t) => t.id !== id),
-      students: prev.students.filter((s) => s.turma !== turma.name),
-      activities: prev.activities.filter((a) => a.turmaId !== id),
-    }));
-  }, [data.turmas]);
+    setData((prev) => {
+      const turma = prev.turmas.find((item) => item.id === id);
+      if (!turma) return prev;
+
+      const removedStudentIds = new Set(
+        prev.students.filter((student) => student.turma === turma.name).map((student) => student.id),
+      );
+      const removedActivityIds = new Set(
+        prev.activities.filter((activity) => activity.turmaId === id).map((activity) => activity.id),
+      );
+
+      return {
+        ...prev,
+        turmas: prev.turmas.filter((item) => item.id !== id),
+        students: prev.students.filter((student) => !removedStudentIds.has(student.id)),
+        activities: prev.activities.filter((activity) => !removedActivityIds.has(activity.id)),
+        activityRecords: prev.activityRecords.filter(
+          (record) => !removedStudentIds.has(record.studentId) && !removedActivityIds.has(record.activityId),
+        ),
+        termSettings: prev.termSettings.filter((setting) => setting.turmaId !== id),
+      };
+    });
+  }, []);
+
+  const setTermTotalPoints = useCallback((turmaId: string, term: AcademicTerm, totalPoints: number) => {
+    const safeTotalPoints = Number.isFinite(totalPoints) ? Math.max(0, totalPoints) : 0;
+
+    setData((prev) => {
+      const existing = prev.termSettings.find(
+        (setting) => setting.turmaId === turmaId && setting.term === term,
+      );
+      const updatedSetting: TermSettings = { turmaId, term, totalPoints: safeTotalPoints };
+
+      return {
+        ...prev,
+        termSettings: existing
+          ? prev.termSettings.map((setting) =>
+              setting.turmaId === turmaId && setting.term === term ? updatedSetting : setting,
+            )
+          : [...prev.termSettings, updatedSetting],
+      };
+    });
+  }, []);
 
   // --- Activities ---
-  const addActivity = useCallback((turmaId: string, name: string, date: string, deadline?: string) => {
+  const addActivity = useCallback((turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => {
     const activityId = generateId();
     const activity: Activity = {
       id: activityId,
       turmaId,
       name: name.trim(),
       date,
+      term,
       deadline: deadline || undefined,
       createdAt: new Date().toISOString(),
     };
@@ -125,7 +165,7 @@ export function useSchoolData() {
   // --- Activity Records ---
   const toggleActivityRecord = useCallback((studentId: string, activityId: string) => {
     setData((prev) => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatLocalDate();
       const existing = prev.activityRecords.find(
         (r) => r.studentId === studentId && r.activityId === activityId
       );
@@ -198,6 +238,7 @@ export function useSchoolData() {
     removeStudent,
     addTurma,
     removeTurma,
+    setTermTotalPoints,
     addActivity,
     removeActivity,
     toggleActivityRecord,

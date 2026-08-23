@@ -2,6 +2,15 @@
 
 Aplicativo desktop Windows feito com Electron, Vite, React e Tailwind CSS.
 
+## Atividades e notas por trimestre
+
+- Selecione o 1º, 2º ou 3º trimestre no cabeçalho do aplicativo.
+- Configure a nota máxima das atividades para cada turma e trimestre.
+- As atividades antigas são preservadas e associadas automaticamente ao 1º trimestre.
+- A nota máxima é dividida igualmente entre as atividades do trimestre.
+- Entregas no prazo recebem 100% da parcela; entregas atrasadas recebem 70%; pendências recebem zero.
+- As planilhas Excel incluem trimestre, entregas, atrasos, aproveitamento e nota final.
+
 ## Fluxo recomendado
 
 Use uma cópia local do repositório. Depois da primeira vez, você só precisa entrar na pasta e atualizar com `git pull`.

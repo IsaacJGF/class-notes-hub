@@ -1,3 +1,5 @@
+export type AcademicTerm = 1 | 2 | 3;
+
 export interface Student {
   id: string;
   name: string;
@@ -15,8 +17,15 @@ export interface Activity {
   turmaId: string;
   name: string;
   date: string; // YYYY-MM-DD
+  term: AcademicTerm;
   deadline?: string; // YYYY-MM-DD — prazo final para entrega (opcional)
   createdAt: string;
+}
+
+export interface TermSettings {
+  turmaId: string;
+  term: AcademicTerm;
+  totalPoints: number;
 }
 
 export interface ActivityRecord {
@@ -33,4 +42,5 @@ export interface SchoolData {
   turmas: Turma[];
   activities: Activity[];
   activityRecords: ActivityRecord[];
+  termSettings: TermSettings[];
 }

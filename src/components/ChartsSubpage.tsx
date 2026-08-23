@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
-import { SchoolData } from "@/types";
+import { useCallback, useMemo, useState } from "react";
+import { AcademicTerm, Activity as SchoolActivity, SchoolData } from "@/types";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar,
 } from "recharts";
 import { TrendingUp, Users, GraduationCap, Activity } from "lucide-react";
+import { getStudentTermSummary, indexActivityRecords, normalizeAcademicTerm } from "@/lib/academicTerms";
 
 interface Props {
   data: SchoolData;
+  selectedTerm: AcademicTerm;
   filterTurma: string;
   filterDateFrom: string;
   filterDateTo: string;
@@ -24,33 +26,42 @@ const tooltipStyle = {
   color: "hsl(var(--foreground))",
 };
 
-export function ChartsSubpage({ data, filterTurma, filterDateFrom, filterDateTo }: Props) {
+export function ChartsSubpage({ data, selectedTerm, filterTurma, filterDateFrom, filterDateTo }: Props) {
   const [chartView, setChartView] = useState<ChartView>("comparativo-turmas");
-  const [selectedTurmaId, setSelectedTurmaId] = useState<string>(data.turmas[0]?.id ?? "");
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(data.students[0]?.id ?? "");
+  const [selectedTurmaId, setSelectedTurmaId] = useState<string>(
+    data.turmas.find((turma) => turma.name === filterTurma)?.id ?? data.turmas[0]?.id ?? "",
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(
+    data.students.find((student) => student.turma === filterTurma)?.id ?? data.students[0]?.id ?? "",
+  );
+  const recordIndex = useMemo(() => indexActivityRecords(data.activityRecords), [data.activityRecords]);
 
   const filteredStudents = useMemo(() => {
     if (!filterTurma || filterTurma === "all") return data.students;
     return data.students.filter((s) => s.turma === filterTurma);
   }, [data.students, filterTurma]);
 
+  const allTermActivities = useMemo(() => {
+    let acts = data.activities.filter((activity) => normalizeAcademicTerm(activity.term) === selectedTerm);
+    if (filterDateFrom) acts = acts.filter((activity) => activity.date >= filterDateFrom);
+    if (filterDateTo) acts = acts.filter((activity) => activity.date <= filterDateTo);
+    return acts.sort((first, second) => first.date.localeCompare(second.date));
+  }, [data.activities, selectedTerm, filterDateFrom, filterDateTo]);
+
   const filteredActivities = useMemo(() => {
-    let acts = data.activities;
+    let acts = allTermActivities;
     if (filterTurma && filterTurma !== "all") {
       const turma = data.turmas.find((t) => t.name === filterTurma);
       if (turma) acts = acts.filter((a) => a.turmaId === turma.id);
     }
-    if (filterDateFrom) acts = acts.filter((a) => a.date >= filterDateFrom);
-    if (filterDateTo) acts = acts.filter((a) => a.date <= filterDateTo);
-    return acts.sort((a, b) => a.date.localeCompare(b.date));
-  }, [data.activities, data.turmas, filterTurma, filterDateFrom, filterDateTo]);
+    return acts;
+  }, [allTermActivities, data.turmas, filterTurma]);
 
-  const getStudentActPct = (studentId: string, turmaId: string) => {
-    const acts = filteredActivities.filter((a) => a.turmaId === turmaId);
-    if (acts.length === 0) return 0;
-    const done = acts.filter((a) => data.activityRecords.find((r) => r.studentId === studentId && r.activityId === a.id && r.done)).length;
-    return Math.round((done / acts.length) * 100);
-  };
+  const getStudentActPct = useCallback(
+    (studentId: string, activities: SchoolActivity[]) =>
+      getStudentTermSummary(studentId, activities, recordIndex, 100).weightedPercentage,
+    [recordIndex],
+  );
 
   const formatDate = (d: string) => {
     const [, m, day] = d.split("-");
@@ -59,12 +70,15 @@ export function ChartsSubpage({ data, filterTurma, filterDateFrom, filterDateTo 
 
   const turmaCompData = useMemo(() => {
     return data.turmas.map((turma) => {
-      const students = filteredStudents.filter((s) => s.turma === turma.name);
+      const students = data.students.filter((student) => student.turma === turma.name);
+      const activities = allTermActivities.filter((activity) => activity.turmaId === turma.id);
       if (students.length === 0) return { turma: turma.name, Atividades: 0, Alunos: 0 };
-      const actPct = Math.round(students.reduce((acc, s) => acc + getStudentActPct(s.id, turma.id), 0) / students.length);
+      const actPct = Math.round(
+        students.reduce((total, student) => total + getStudentActPct(student.id, activities), 0) / students.length,
+      );
       return { turma: turma.name, Atividades: actPct, Alunos: students.length };
     });
-  }, [data.turmas, filteredStudents, filteredActivities]);
+  }, [data.turmas, data.students, allTermActivities, getStudentActPct]);
 
   const studentCompData = useMemo(() => {
     return filteredStudents.map((s) => {
@@ -73,10 +87,12 @@ export function ChartsSubpage({ data, filterTurma, filterDateFrom, filterDateTo 
         aluno: s.name.split(" ")[0],
         nomeCompleto: s.name,
         turma: s.turma,
-        Atividades: turma ? getStudentActPct(s.id, turma.id) : 0,
+        Atividades: turma
+          ? getStudentActPct(s.id, filteredActivities.filter((activity) => activity.turmaId === turma.id))
+          : 0,
       };
     }).sort((a, b) => b.Atividades - a.Atividades);
-  }, [filteredStudents, data.turmas, filteredActivities]);
+  }, [filteredStudents, data.turmas, filteredActivities, getStudentActPct]);
 
   const turmaHistoryData = useMemo(() => {
     const turma = data.turmas.find((t) => t.id === selectedTurmaId);
@@ -84,26 +100,19 @@ export function ChartsSubpage({ data, filterTurma, filterDateFrom, filterDateTo 
     const students = data.students.filter((s) => s.turma === turma.name);
     if (students.length === 0) return [];
 
-    const tDates = Array.from(new Set(data.activities.filter((a) => a.turmaId === turma.id).map((a) => a.date)))
-      .filter((d) => {
-        if (filterDateFrom && d < filterDateFrom) return false;
-        if (filterDateTo && d > filterDateTo) return false;
-        return true;
-      })
-      .sort();
+    const turmaActivities = allTermActivities.filter((activity) => activity.turmaId === turma.id);
+    const tDates = Array.from(new Set(turmaActivities.map((activity) => activity.date))).sort();
 
     return tDates.map((date) => {
-      const tActs = data.activities.filter((a) => a.turmaId === turma.id && a.date === date);
-      const doneSum = students.reduce((acc, s) => {
-        const d = tActs.filter((a) => data.activityRecords.find((r) => r.studentId === s.id && r.activityId === a.id && r.done)).length;
-        return acc + d;
-      }, 0);
-      const actPct = tActs.length > 0
-        ? Math.round((doneSum / (students.length * tActs.length)) * 100)
+      const activities = turmaActivities.filter((activity) => activity.date === date);
+      const actPct = students.length > 0
+        ? Math.round(
+            students.reduce((total, student) => total + getStudentActPct(student.id, activities), 0) / students.length,
+          )
         : 0;
       return { data: formatDate(date), Atividades: actPct };
     });
-  }, [selectedTurmaId, data, filterDateFrom, filterDateTo]);
+  }, [selectedTurmaId, data.turmas, data.students, allTermActivities, getStudentActPct]);
 
   const studentHistoryData = useMemo(() => {
     const student = data.students.find((s) => s.id === selectedStudentId);
@@ -111,25 +120,17 @@ export function ChartsSubpage({ data, filterTurma, filterDateFrom, filterDateTo 
     const turma = data.turmas.find((t) => t.name === student.turma);
     if (!turma) return [];
 
-    const sDates = Array.from(new Set(data.activities.filter((a) => a.turmaId === turma.id).map((a) => a.date)))
-      .filter((d) => {
-        if (filterDateFrom && d < filterDateFrom) return false;
-        if (filterDateTo && d > filterDateTo) return false;
-        return true;
-      })
-      .sort();
+    const turmaActivities = allTermActivities.filter((activity) => activity.turmaId === turma.id);
+    const sDates = Array.from(new Set(turmaActivities.map((activity) => activity.date))).sort();
 
     return sDates.map((date) => {
-      const dayActs = data.activities.filter((a) => a.turmaId === turma.id && a.date === date);
-      const dayDone = dayActs.filter((a) =>
-        data.activityRecords.find((r) => r.studentId === student.id && r.activityId === a.id && r.done)
-      ).length;
+      const dayActs = turmaActivities.filter((activity) => activity.date === date);
       return {
         data: formatDate(date),
-        "Atividades do dia": dayActs.length > 0 ? Math.round((dayDone / dayActs.length) * 100) : null,
+        "Atividades do dia": dayActs.length > 0 ? getStudentActPct(student.id, dayActs) : null,
       };
     });
-  }, [selectedStudentId, data, filterDateFrom, filterDateTo]);
+  }, [selectedStudentId, data.students, data.turmas, allTermActivities, getStudentActPct]);
 
   const views: { id: ChartView; label: string; icon: React.ReactNode }[] = [
     { id: "comparativo-turmas", label: "Comparativo Turmas", icon: <GraduationCap size={13} /> },

@@ -1,15 +1,30 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { SchoolData, Turma, Activity, ActivityRecord } from "@/types";
+import { AcademicTerm, SchoolData, Turma, Activity, ActivityRecord } from "@/types";
 import { Plus, Trash2, CalendarPlus, Download, Search, X, LayoutDashboard } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
+import {
+  formatLocalDate,
+  formatPoints,
+  formatActivityExportResult,
+  getIndexedActivityRecord,
+  getStudentTermSummary,
+  getTermActivities,
+  getTermLabel,
+  getTermTotalPoints,
+  indexActivityRecords,
+  isActivityLate,
+  roundGrade,
+} from "@/lib/academicTerms";
 
 type DeadlineMode = "none" | "date" | "days";
 
 interface Props {
   turma: Turma;
   data: SchoolData;
-  addActivity: (turmaId: string, name: string, date: string, deadline?: string) => Activity;
+  selectedTerm: AcademicTerm;
+  setTermTotalPoints: (turmaId: string, term: AcademicTerm, totalPoints: number) => void;
+  addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
   removeActivity: (id: string) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecord: (studentId: string, activityId: string) => boolean | null;
@@ -23,6 +38,8 @@ interface Props {
 export function TurmaTab({
   turma,
   data,
+  selectedTerm,
+  setTermTotalPoints,
   addActivity,
   removeActivity,
   toggleActivityRecord,
@@ -33,11 +50,11 @@ export function TurmaTab({
   onOpenSummary,
 }: Props) {
   const [newActivityName, setNewActivityName] = useState("");
-  const [newActivityDate, setNewActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newActivityDate, setNewActivityDate] = useState(() => formatLocalDate());
   const [deadlineMode, setDeadlineMode] = useState<DeadlineMode>("none");
   const [newActivityDeadline, setNewActivityDeadline] = useState("");
   const [newActivityDeadlineDays, setNewActivityDeadlineDays] = useState(7);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(() => formatLocalDate());
 
   useEffect(() => {
     if (initialDate) {
@@ -98,8 +115,20 @@ export function TurmaTab({
   }, [turmaStudents]);
 
   const turmaActivities = useMemo(
-    () => data.activities.filter((a) => a.turmaId === turma.id).sort((a, b) => a.date.localeCompare(b.date)),
-    [data.activities, turma.id]
+    () => getTermActivities(data.activities, turma.id, selectedTerm),
+    [data.activities, turma.id, selectedTerm]
+  );
+
+  const termTotalPoints = getTermTotalPoints(data.termSettings, turma.id, selectedTerm);
+  const recordIndex = useMemo(() => indexActivityRecords(data.activityRecords), [data.activityRecords]);
+  const studentSummaries = useMemo(
+    () => new Map(
+      allTurmaStudents.map((student) => [
+        student.id,
+        getStudentTermSummary(student.id, turmaActivities, recordIndex, termTotalPoints),
+      ]),
+    ),
+    [allTurmaStudents, turmaActivities, recordIndex, termTotalPoints],
   );
 
   const dailyActivities = useMemo(
@@ -112,7 +141,7 @@ export function TurmaTab({
     if (deadlineMode === "days") {
       const base = new Date(`${newActivityDate}T00:00:00`);
       base.setDate(base.getDate() + (newActivityDeadlineDays || 0));
-      return base.toISOString().slice(0, 10);
+      return formatLocalDate(base);
     }
     return undefined;
   };
@@ -122,7 +151,7 @@ export function TurmaTab({
     if (!newActivityName.trim() || !newActivityDate) return;
     const deadline = computeDeadline();
     if (deadlineMode === "date" && !deadline) return;
-    addActivity(turma.id, newActivityName.trim(), newActivityDate, deadline);
+    addActivity(turma.id, newActivityName.trim(), newActivityDate, selectedTerm, deadline);
     setNewActivityName("");
     setNewActivityDeadline("");
   };
@@ -137,16 +166,50 @@ export function TurmaTab({
     return `${day}/${m}`;
   };
 
-  const exportDailyExcel = () => {
-    const headers = ["Aluno", ...dailyActivities.map((a) => a.name)];
-    const rows = turmaStudents.map((s) => {
-      const activities = dailyActivities.map((a) => {
-        const done = getActivityRecord(s.id, a.id);
-        return done === true ? "Feito" : done === false ? "Pendente" : "";
+  const exportTermExcel = () => {
+    const headers = [
+      "Aluno",
+      "Turma",
+      "Trimestre",
+      "No prazo",
+      "Atrasadas (70%)",
+      "Pendentes",
+      "Aproveitamento (%)",
+      "Nota final",
+      "Nota máxima",
+      "Valor por atividade",
+      ...turmaActivities.map((activity) => {
+        const deadline = activity.deadline ? ` | prazo ${formatShort(activity.deadline)}` : "";
+        return `${formatShort(activity.date)} - ${activity.name}${deadline}`;
+      }),
+    ];
+    const rows = allTurmaStudents.map((student) => {
+      const summary = studentSummaries.get(student.id)!;
+      const activities = turmaActivities.map((activity) => {
+        const record = getIndexedActivityRecord(recordIndex, student.id, activity.id);
+        return formatActivityExportResult(activity, record, summary.activityValue);
       });
-      return [s.name, ...activities];
+
+      return [
+        student.name,
+        turma.name,
+        getTermLabel(selectedTerm),
+        summary.onTime,
+        summary.late,
+        summary.pending,
+        summary.weightedPercentage,
+        summary.finalGrade,
+        summary.totalPoints,
+        roundGrade(summary.activityValue),
+        ...activities,
+      ];
     });
-    const allRows: (string | number)[][] = [[`Turma ${turma.name} - ${formatDate(selectedDate)}`], [], headers, ...rows];
+    const allRows: (string | number)[][] = [
+      [`Turma ${turma.name} - ${getTermLabel(selectedTerm)} - Nota máxima: ${formatPoints(termTotalPoints)}`],
+      [],
+      headers,
+      ...rows,
+    ];
     const ws = XLSX.utils.aoa_to_sheet(allRows);
     const columnCount = headers.length;
     ws["!cols"] = headers.map((header, colIdx) => {
@@ -166,8 +229,8 @@ export function TurmaTab({
       }
     }
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Turma");
-    XLSX.writeFile(wb, `turma_${turma.name}_${formatShort(selectedDate).replace("/", "-")}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `${selectedTerm}º trimestre`);
+    XLSX.writeFile(wb, `turma_${turma.name}_${selectedTerm}o_trimestre.xlsx`);
   };
 
   return (
@@ -181,7 +244,7 @@ export function TurmaTab({
             {turma.name}
           </div>
           <span className="text-xs sm:text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
-            {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s)
+            {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s) · {getTermLabel(selectedTerm)}
           </span>
         </div>
         <div className="flex items-center gap-2 sm:ml-auto">
@@ -240,7 +303,7 @@ export function TurmaTab({
         <div className="section-card-header">
           <span className="section-card-title">Data da Turma</span>
           <button
-            onClick={exportDailyExcel}
+            onClick={exportTermExcel}
             className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80 min-h-[36px] touch-manipulation"
             style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
           >
@@ -258,6 +321,26 @@ export function TurmaTab({
           <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
             {dailyActivities.length} atividade(s) neste dia
           </span>
+          <label className="flex items-center gap-2 sm:ml-auto">
+            <span className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>
+              Nota do trimestre
+            </span>
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={termTotalPoints || ""}
+              onChange={(event) => setTermTotalPoints(turma.id, selectedTerm, Number(event.target.value))}
+              placeholder="0,0"
+              aria-label={`Nota máxima do ${getTermLabel(selectedTerm)}`}
+              className="w-20 rounded border border-border bg-background px-2 py-2 text-center text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </label>
+          {turmaActivities.length > 0 && (
+            <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+              {formatPoints(termTotalPoints / turmaActivities.length)} por atividade
+            </span>
+          )}
         </div>
       </div>
 
@@ -265,7 +348,7 @@ export function TurmaTab({
         <div className="section-card-header">
           <span className="section-card-title flex items-center gap-2">
             <CalendarPlus size={14} />
-            Nova Atividade
+            Nova Atividade — {getTermLabel(selectedTerm)}
           </span>
         </div>
         <div className="p-4">
@@ -382,6 +465,9 @@ export function TurmaTab({
                       </div>
                     </th>
                   ))}
+                  <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
+                    Nota do trimestre
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -395,10 +481,11 @@ export function TurmaTab({
                     </td>
                     {dailyActivities.map((a) => {
                       const status = getActivityRecord(student.id, a.id);
-                      const rec = getActivityRecordFull(student.id, a.id);
-                      const isDone = status === true;
-                      const tooltip = isDone
-                        ? `Feito${rec?.markedAt ? ` — registrado em ${formatDate(rec.markedAt)}` : ""}`
+                       const rec = getActivityRecordFull(student.id, a.id);
+                       const isDone = status === true;
+                       const late = isActivityLate(a, rec);
+                       const tooltip = isDone
+                         ? `${late ? "Atrasado — vale 70%" : "Feito no prazo"}${rec?.markedAt ? ` — registrado em ${formatDate(rec.markedAt)}` : ""}`
                         : status === false
                           ? "Pendente"
                           : "Marcar";
@@ -408,14 +495,20 @@ export function TurmaTab({
                             <button
                               onClick={() => toggleActivityRecord(student.id, a.id)}
                               title={tooltip}
-                              className={isDone ? "btn-toggle-done" : "btn-toggle-pending"}
+                              className={isDone && !late ? "btn-toggle-done" : "btn-toggle-pending"}
                             >
-                              {isDone ? "✓ Feito" : status === false ? "✗ Pendente" : "Marcar"}
+                              {late ? "⚠ Atrasado" : isDone ? "✓ Feito" : status === false ? "✗ Pendente" : "Marcar"}
                             </button>
                           </div>
                         </td>
                       );
                     })}
+                    <td className="text-center whitespace-nowrap font-semibold" style={{ color: "hsl(var(--primary))" }}>
+                      {formatPoints(studentSummaries.get(student.id)?.finalGrade ?? 0)}
+                      <span className="ml-1 text-[10px] font-normal" style={{ color: "hsl(var(--muted-foreground))" }}>
+                        / {formatPoints(termTotalPoints)}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
