@@ -14,6 +14,11 @@ export interface StudentTermSummary {
   finalGrade: number;
 }
 
+export interface ActivityChanges {
+  name?: string;
+  term?: AcademicTerm;
+}
+
 export type ActivityRecordIndex = ReadonlyMap<string, ActivityRecord>;
 
 export function normalizeAcademicTerm(value: unknown): AcademicTerm {
@@ -92,6 +97,18 @@ export function getTermActivities(
   return activities
     .filter((activity) => activity.turmaId === turmaId && normalizeAcademicTerm(activity.term) === term)
     .sort((first, second) => first.date.localeCompare(second.date));
+}
+
+export function updateActivityDetails(activity: Activity, changes: ActivityChanges): Activity {
+  const name = changes.name === undefined ? activity.name : changes.name.trim();
+
+  if (!name) return activity;
+
+  return {
+    ...activity,
+    name,
+    term: changes.term === undefined ? activity.term : normalizeAcademicTerm(changes.term),
+  };
 }
 
 export function indexActivityRecords(records: readonly ActivityRecord[]): ActivityRecordIndex {

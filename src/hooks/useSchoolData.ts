@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { AcademicTerm, SchoolData, Student, Turma, Activity, ActivityRecord, TermSettings } from "@/types";
-import { formatLocalDate, normalizeSchoolData } from "@/lib/academicTerms";
+import {
+  formatLocalDate,
+  normalizeSchoolData,
+  updateActivityDetails,
+  type ActivityChanges,
+} from "@/lib/academicTerms";
 
 const STORAGE_KEY = "school_control_data";
 
@@ -154,6 +159,15 @@ export function useSchoolData() {
     return activity;
   }, []);
 
+  const updateActivity = useCallback((id: string, changes: ActivityChanges) => {
+    setData((prev) => ({
+      ...prev,
+      activities: prev.activities.map((activity) =>
+        activity.id === id ? updateActivityDetails(activity, changes) : activity,
+      ),
+    }));
+  }, []);
+
   const removeActivity = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
@@ -240,6 +254,7 @@ export function useSchoolData() {
     removeTurma,
     setTermTotalPoints,
     addActivity,
+    updateActivity,
     removeActivity,
     toggleActivityRecord,
     getActivityRecord,

@@ -23,7 +23,6 @@ interface Props {
   turma: Turma;
   data: SchoolData;
   selectedTerm: AcademicTerm;
-  setTermTotalPoints: (turmaId: string, term: AcademicTerm, totalPoints: number) => void;
   addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
   removeActivity: (id: string) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
@@ -39,7 +38,6 @@ export function TurmaTab({
   turma,
   data,
   selectedTerm,
-  setTermTotalPoints,
   addActivity,
   removeActivity,
   toggleActivityRecord,
@@ -321,23 +319,8 @@ export function TurmaTab({
           <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
             {dailyActivities.length} atividade(s) neste dia
           </span>
-          <label className="flex items-center gap-2 sm:ml-auto">
-            <span className="text-xs font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>
-              Nota do trimestre
-            </span>
-            <input
-              type="number"
-              min={0}
-              step="0.1"
-              value={termTotalPoints || ""}
-              onChange={(event) => setTermTotalPoints(turma.id, selectedTerm, Number(event.target.value))}
-              placeholder="0,0"
-              aria-label={`Nota máxima do ${getTermLabel(selectedTerm)}`}
-              className="w-20 rounded border border-border bg-background px-2 py-2 text-center text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </label>
           {turmaActivities.length > 0 && (
-            <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+            <span className="text-xs sm:ml-auto" style={{ color: "hsl(var(--muted-foreground))" }}>
               {formatPoints(termTotalPoints / turmaActivities.length)} por atividade
             </span>
           )}

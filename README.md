@@ -5,7 +5,8 @@ Aplicativo desktop Windows feito com Electron, Vite, React e Tailwind CSS.
 ## Atividades e notas por trimestre
 
 - Selecione o 1º, 2º ou 3º trimestre no cabeçalho do aplicativo.
-- Configure a nota máxima das atividades para cada turma e trimestre.
+- Configure a nota máxima das atividades para cada turma e trimestre na aba Resumo.
+- Renomeie atividades ou transfira-as entre trimestres diretamente na aba Resumo.
 - As atividades antigas são preservadas e associadas automaticamente ao 1º trimestre.
 - A nota máxima é dividida igualmente entre as atividades do trimestre.
 - Entregas no prazo recebem 100% da parcela; entregas atrasadas recebem 70%; pendências recebem zero.

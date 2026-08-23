@@ -128,6 +128,7 @@ const Index = () => {
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
+            updateActivity={school.updateActivity}
             removeActivity={school.removeActivity}
             initialTurma={summaryInitialTurma}
             onInitialTurmaConsumed={() => setSummaryInitialTurma(undefined)}
@@ -139,7 +140,6 @@ const Index = () => {
             turma={currentTurma}
             data={school.data}
             selectedTerm={selectedTerm}
-            setTermTotalPoints={school.setTermTotalPoints}
             addActivity={school.addActivity}
             removeActivity={school.removeActivity}
             toggleActivityRecord={school.toggleActivityRecord}
