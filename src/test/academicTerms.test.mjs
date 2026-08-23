@@ -12,6 +12,7 @@ import {
   isActivityLate,
   normalizeAcademicTerm,
   normalizeSchoolData,
+  updateActivityDetails,
 } from "../lib/academicTerms.ts";
 
 function activity(id, overrides = {}) {
@@ -61,6 +62,63 @@ test("migra atividades existentes para o primeiro trimestre sem descartar dados 
   assert.deepEqual(migrated.termSettings, []);
   assert.deepEqual(migrated.attendanceRecords, legacyData.attendanceRecords);
   assert.deepEqual(migrated.classRecords, legacyData.classRecords);
+});
+
+test("renomeia a atividade sem alterar suas datas, o trimestre ou os registros", () => {
+  const original = activity("redacao");
+  const originalRecord = record(original.id);
+  const renamed = updateActivityDetails(original, { name: "  Redação corrigida  " });
+
+  assert.equal(renamed.name, "Redação corrigida");
+  assert.equal(renamed.id, original.id);
+  assert.equal(renamed.turmaId, original.turmaId);
+  assert.equal(renamed.term, original.term);
+  assert.equal(renamed.date, original.date);
+  assert.equal(renamed.deadline, original.deadline);
+  assert.equal(renamed.createdAt, original.createdAt);
+  assert.equal(indexActivityRecords([originalRecord]).get(`ana:${renamed.id}`), originalRecord);
+});
+
+test("impede que uma atividade seja renomeada com um nome vazio", () => {
+  const original = activity("redacao");
+
+  assert.equal(updateActivityDetails(original, { name: "   " }), original);
+});
+
+test("transfere a atividade de trimestre mantendo datas, nome e entregas", () => {
+  const original = activity("redacao");
+  const lateRecord = record(original.id, { markedAt: "2026-03-15" });
+  const moved = updateActivityDetails(original, { term: 3 });
+  const records = indexActivityRecords([lateRecord]);
+
+  assert.equal(moved.term, 3);
+  assert.equal(moved.id, original.id);
+  assert.equal(moved.name, original.name);
+  assert.equal(moved.date, original.date);
+  assert.equal(moved.deadline, original.deadline);
+  assert.equal(moved.createdAt, original.createdAt);
+  assert.deepEqual(getTermActivities([moved], "3A", 1), []);
+  assert.deepEqual(getTermActivities([moved], "3A", 3), [moved]);
+  assert.equal(getStudentTermSummary("ana", [moved], records, 5).finalGrade, 3.5);
+  assert.equal(records.get(`ana:${moved.id}`), lateRecord);
+});
+
+test("recalcula os dois trimestres depois de transferir uma atividade", () => {
+  const firstTermActivity = activity("primeira");
+  const movedActivity = updateActivityDetails(activity("segunda"), { term: 2 });
+  const activities = [firstTermActivity, movedActivity];
+  const records = indexActivityRecords([
+    record(firstTermActivity.id),
+    record(movedActivity.id, { markedAt: "2026-03-15" }),
+  ]);
+
+  const firstTerm = getStudentTermSummary("ana", getTermActivities(activities, "3A", 1), records, 3);
+  const secondTerm = getStudentTermSummary("ana", getTermActivities(activities, "3A", 2), records, 5);
+
+  assert.equal(firstTerm.activityValue, 3);
+  assert.equal(firstTerm.finalGrade, 3);
+  assert.equal(secondTerm.activityValue, 5);
+  assert.equal(secondTerm.finalGrade, 3.5);
 });
 
 test("normaliza configurações trimestrais inválidas sem aceitar valores negativos", () => {

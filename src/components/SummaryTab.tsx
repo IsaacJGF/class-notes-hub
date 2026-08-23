@@ -1,10 +1,27 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { AcademicTerm, SchoolData, ActivityRecord } from "@/types";
-import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap, Trash2 } from "lucide-react";
+import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X, AlertTriangle, Settings2, ChevronDown, ChevronUp, GraduationCap, Trash2, MoreHorizontal, Pencil, ArrowRightLeft } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ACADEMIC_TERMS,
   formatPoints,
   formatActivityExportResult,
   getIndexedActivityRecord,
@@ -15,6 +32,7 @@ import {
   isActivityLate,
   normalizeAcademicTerm,
   roundGrade,
+  type ActivityChanges,
 } from "@/lib/academicTerms";
 
 interface Props {
@@ -24,6 +42,7 @@ interface Props {
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
+  updateActivity: (id: string, changes: ActivityChanges) => void;
   removeActivity: (id: string) => void;
   initialTurma?: string;
   onInitialTurmaConsumed?: () => void;
@@ -32,9 +51,22 @@ interface Props {
 
 type MainView = "tabelas" | "graficos";
 
-export function SummaryTab({ data, selectedTerm, setTermTotalPoints, toggleActivityRecord, getActivityRecordFull, setActivityOnTimeOverride, removeActivity, initialTurma, onInitialTurmaConsumed, onOpenTurma }: Props) {
+export function SummaryTab({
+  data,
+  selectedTerm,
+  setTermTotalPoints,
+  toggleActivityRecord,
+  getActivityRecordFull,
+  setActivityOnTimeOverride,
+  updateActivity,
+  removeActivity,
+  initialTurma,
+  onInitialTurmaConsumed,
+  onOpenTurma,
+}: Props) {
   const [mainView, setMainView] = useState<MainView>("tabelas");
   const [filterTurma, setFilterTurma] = useState("");
+  const [editingActivity, setEditingActivity] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (initialTurma) {
@@ -330,7 +362,7 @@ export function SummaryTab({ data, selectedTerm, setTermTotalPoints, toggleActiv
           {selectedTurma && (
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
-                Nota máxima
+                Nota do trimestre
               </span>
               <input
                 type="number"
@@ -339,6 +371,7 @@ export function SummaryTab({ data, selectedTerm, setTermTotalPoints, toggleActiv
                 value={termTotalPoints || ""}
                 onChange={(event) => setTermTotalPoints(selectedTurma.id, selectedTerm, Number(event.target.value))}
                 placeholder="0,0"
+                aria-label={`Nota total do ${getTermLabel(selectedTerm)}`}
                 className="min-h-[40px] w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-24"
               />
             </label>
@@ -541,17 +574,44 @@ export function SummaryTab({ data, selectedTerm, setTermTotalPoints, toggleActiv
                     <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Nota final</th>
                     {filteredActivities.map((a) => (
                       <th key={a.id} className="sticky top-0 z-20 text-center relative" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "8rem" }}>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Apagar a atividade "${a.name}" (${formatDate(a.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
-                              removeActivity(a.id);
-                            }
-                          }}
-                          className="absolute top-0.5 right-0.5 rounded p-0.5 opacity-40 hover:opacity-100 hover:text-destructive"
-                          title="Apagar esta atividade"
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="absolute right-0.5 top-0.5 z-10 rounded p-1 opacity-60 transition-opacity hover:opacity-100"
+                              title={`Opções da atividade ${a.name}`}
+                              aria-label={`Opções da atividade ${a.name}`}
+                            >
+                              <MoreHorizontal size={15} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuItem onSelect={() => setEditingActivity({ id: a.id, name: a.name })}>
+                              <Pencil size={14} className="mr-2" />
+                              Renomear atividade
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs font-medium">Mover para</DropdownMenuLabel>
+                            {ACADEMIC_TERMS.filter((term) => term !== selectedTerm).map((term) => (
+                              <DropdownMenuItem key={term} onSelect={() => updateActivity(a.id, { term })}>
+                                <ArrowRightLeft size={14} className="mr-2" />
+                                {getTermLabel(term)}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => {
+                                if (confirm(`Apagar a atividade "${a.name}" (${formatDate(a.date)})? Esta ação remove a coluna e todos os registros associados, inclusive na planilha da turma.`)) {
+                                  removeActivity(a.id);
+                                }
+                              }}
+                            >
+                              <Trash2 size={14} className="mr-2" />
+                              Excluir atividade
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         {filterTurma && onOpenTurma ? (
                           <button
                             onClick={() => {
@@ -695,6 +755,61 @@ export function SummaryTab({ data, selectedTerm, setTermTotalPoints, toggleActiv
         />
       )}
       </>)}
+
+      <Dialog
+        open={editingActivity !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingActivity(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renomear atividade</DialogTitle>
+            <DialogDescription>
+              A data de registro e as entregas dos alunos serão preservadas.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!editingActivity?.name.trim()) return;
+              updateActivity(editingActivity.id, { name: editingActivity.name });
+              setEditingActivity(null);
+            }}
+          >
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Nome da atividade</span>
+              <input
+                autoFocus
+                required
+                value={editingActivity?.name ?? ""}
+                onChange={(event) =>
+                  setEditingActivity((current) => current ? { ...current, name: event.target.value } : null)
+                }
+                className="min-h-[40px] rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </label>
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => setEditingActivity(null)}
+                className="rounded border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!editingActivity?.name.trim()}
+                className="rounded px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+              >
+                Salvar
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {contextMenu && (() => {
         const rec = getActivityRecordFull(contextMenu.studentId, contextMenu.activityId);
