@@ -25,7 +25,7 @@ export function useSchoolData() {
   const [data, setData] = useState<SchoolData>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return normalizeSchoolData(JSON.parse(stored));
+      if (stored) return JSON.parse(stored);
     } catch {}
     return defaultData;
   });
