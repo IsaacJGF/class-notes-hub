@@ -1,4 +1,4 @@
-import type { AcademicTerm, Activity, ActivityRecord, SchoolData, TermSettings } from "@/types";
+import type { AcademicTerm, Activity, ActivityRecord, SchoolData, TermSettings, StudentExtraPoints } from "@/types";
 
 export const ACADEMIC_TERMS: readonly AcademicTerm[] = [1, 2, 3];
 export const LATE_ACTIVITY_FACTOR = 0.7;
@@ -12,6 +12,8 @@ export interface StudentTermSummary {
   activityValue: number;
   weightedPercentage: number;
   finalGrade: number;
+  activityGrade: number;
+  extraPoints: number;
 }
 
 export interface ActivityChanges {
@@ -40,6 +42,11 @@ export function normalizeSchoolData(rawData: unknown): SchoolData {
         }))
       : [],
     activityRecords: Array.isArray(parsedData.activityRecords) ? parsedData.activityRecords : [],
+    studentExtraPoints: Array.isArray(parsedData.studentExtraPoints)
+      ? parsedData.studentExtraPoints
+          .filter((entry) => typeof entry.studentId === "string")
+          .map((entry) => ({ ...entry, term: normalizeAcademicTerm(entry.term), points: sanitizeExtraPoints(Number(entry.points)) }))
+      : [],
     termSettings: Array.isArray(parsedData.termSettings)
       ? parsedData.termSettings
           .filter((setting) => typeof setting.turmaId === "string")
@@ -75,6 +82,20 @@ export function formatPoints(points: number): string {
 
 export function roundGrade(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function sanitizeExtraPoints(points: number): number {
+  return Number.isFinite(points) ? roundGrade(Math.max(0, points)) : 0;
+}
+
+export function getStudentExtraPoints(entries: readonly StudentExtraPoints[], studentId: string, term: AcademicTerm): number {
+  return sanitizeExtraPoints(entries.find((entry) => entry.studentId === studentId && entry.term === term)?.points ?? 0);
+}
+
+export function updateStudentExtraPoints(entries: readonly StudentExtraPoints[], studentId: string, term: AcademicTerm, points: number): StudentExtraPoints[] {
+  const remaining = entries.filter((entry) => entry.studentId !== studentId || entry.term !== term);
+  const safePoints = sanitizeExtraPoints(points);
+  return safePoints > 0 ? [...remaining, { studentId, term, points: safePoints }] : remaining;
 }
 
 export function getTermTotalPoints(
@@ -164,6 +185,7 @@ export function getStudentTermSummary(
   activities: readonly Activity[],
   recordIndex: ActivityRecordIndex,
   totalPoints: number,
+  extraPoints: number = 0,
 ): StudentTermSummary {
   let onTime = 0;
   let late = 0;
@@ -182,6 +204,8 @@ export function getStudentTermSummary(
   const activityCount = activities.length;
   const safeTotalPoints = Number.isFinite(totalPoints) ? Math.max(0, totalPoints) : 0;
   const weightedActivities = onTime + late * LATE_ACTIVITY_FACTOR;
+  const safeExtraPoints = sanitizeExtraPoints(extraPoints);
+  const activityGrade = activityCount > 0 ? roundGrade((safeTotalPoints * weightedActivities) / activityCount) : 0;
   const weightedPercentage = activityCount > 0
     ? roundGrade((weightedActivities / activityCount) * 100)
     : 0;
@@ -194,8 +218,8 @@ export function getStudentTermSummary(
     totalPoints: safeTotalPoints,
     activityValue: activityCount > 0 ? safeTotalPoints / activityCount : 0,
     weightedPercentage,
-    finalGrade: activityCount > 0
-      ? roundGrade((safeTotalPoints * weightedActivities) / activityCount)
-      : 0,
+    activityGrade,
+    extraPoints: safeExtraPoints,
+    finalGrade: roundGrade(activityGrade + safeExtraPoints),
   };
 }

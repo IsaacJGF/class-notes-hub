@@ -3,12 +3,14 @@ import { AcademicTerm, SchoolData, Turma, Activity, ActivityRecord } from "@/typ
 import { Plus, Trash2, CalendarPlus, Download, Search, X, LayoutDashboard } from "lucide-react";
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
+import { ExtraPointsInput } from "@/components/ExtraPointsInput";
 import {
   formatLocalDate,
   formatPoints,
   formatActivityExportResult,
   getIndexedActivityRecord,
   getStudentTermSummary,
+  getStudentExtraPoints,
   getTermActivities,
   getTermLabel,
   getTermTotalPoints,
@@ -23,6 +25,7 @@ interface Props {
   turma: Turma;
   data: SchoolData;
   selectedTerm: AcademicTerm;
+  setStudentExtraPoints: (studentId: string, term: AcademicTerm, points: number) => void;
   addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
   removeActivity: (id: string) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
@@ -38,6 +41,7 @@ export function TurmaTab({
   turma,
   data,
   selectedTerm,
+  setStudentExtraPoints,
   addActivity,
   removeActivity,
   toggleActivityRecord,
@@ -123,10 +127,10 @@ export function TurmaTab({
     () => new Map(
       allTurmaStudents.map((student) => [
         student.id,
-        getStudentTermSummary(student.id, turmaActivities, recordIndex, termTotalPoints),
+        getStudentTermSummary(student.id, turmaActivities, recordIndex, termTotalPoints, getStudentExtraPoints(data.studentExtraPoints, student.id, selectedTerm)),
       ]),
     ),
-    [allTurmaStudents, turmaActivities, recordIndex, termTotalPoints],
+    [allTurmaStudents, turmaActivities, recordIndex, termTotalPoints, data.studentExtraPoints, selectedTerm],
   );
 
   const dailyActivities = useMemo(
@@ -173,6 +177,8 @@ export function TurmaTab({
       "Atrasadas (70%)",
       "Pendentes",
       "Aproveitamento (%)",
+      "Nota das atividades",
+      "Pontos extras",
       "Nota final",
       "Nota máxima",
       "Valor por atividade",
@@ -182,7 +188,8 @@ export function TurmaTab({
       }),
     ];
     const rows = allTurmaStudents.map((student) => {
-      const summary = studentSummaries.get(student.id)!;
+      const summary = studentSummaries.get(student.id);
+      if (!summary) return [];
       const activities = turmaActivities.map((activity) => {
         const record = getIndexedActivityRecord(recordIndex, student.id, activity.id);
         return formatActivityExportResult(activity, record, summary.activityValue);
@@ -196,6 +203,8 @@ export function TurmaTab({
         summary.late,
         summary.pending,
         summary.weightedPercentage,
+        summary.activityGrade,
+        summary.extraPoints,
         summary.finalGrade,
         summary.totalPoints,
         roundGrade(summary.activityValue),
@@ -451,6 +460,7 @@ export function TurmaTab({
                   <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
                     Nota do trimestre
                   </th>
+                  <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos extras</th>
                 </tr>
               </thead>
               <tbody>
@@ -480,7 +490,7 @@ export function TurmaTab({
                               title={tooltip}
                               className={isDone && !late ? "btn-toggle-done" : "btn-toggle-pending"}
                             >
-                              {late ? "⚠ Atrasado" : isDone ? "✓ Feito" : status === false ? "✗ Pendente" : "Marcar"}
+                              {late ? "⚠ Atrasado" : isDone ? "✓ Feito" : <><span className="text-destructive text-base font-bold">✗</span> Pendente</>}
                             </button>
                           </div>
                         </td>
@@ -491,6 +501,9 @@ export function TurmaTab({
                       <span className="ml-1 text-[10px] font-normal" style={{ color: "hsl(var(--muted-foreground))" }}>
                         / {formatPoints(termTotalPoints)}
                       </span>
+                    </td>
+                    <td>
+                      <ExtraPointsInput studentId={student.id} studentName={student.name} term={selectedTerm} points={studentSummaries.get(student.id)?.extraPoints ?? 0} onChange={setStudentExtraPoints} />
                     </td>
                   </tr>
                 ))}

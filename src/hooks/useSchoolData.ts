@@ -4,6 +4,7 @@ import {
   formatLocalDate,
   normalizeSchoolData,
   updateActivityDetails,
+  updateStudentExtraPoints,
   type ActivityChanges,
 } from "@/lib/academicTerms";
 
@@ -15,6 +16,7 @@ const defaultData: SchoolData = {
   activities: [],
   activityRecords: [],
   termSettings: [],
+  studentExtraPoints: [],
 };
 
 function generateId(): string {
@@ -66,6 +68,7 @@ export function useSchoolData() {
     setData((prev) => ({
       ...prev,
       students: prev.students.filter((s) => s.id !== id),
+      studentExtraPoints: prev.studentExtraPoints.filter((entry) => entry.studentId !== id),
       activityRecords: prev.activityRecords.filter((r) => r.studentId !== id),
     }));
   }, []);
@@ -105,6 +108,7 @@ export function useSchoolData() {
           (record) => !removedStudentIds.has(record.studentId) && !removedActivityIds.has(record.activityId),
         ),
         termSettings: prev.termSettings.filter((setting) => setting.turmaId !== id),
+        studentExtraPoints: prev.studentExtraPoints.filter((entry) => !removedStudentIds.has(entry.studentId)),
       };
     });
   }, []);
@@ -126,6 +130,13 @@ export function useSchoolData() {
             )
           : [...prev.termSettings, updatedSetting],
       };
+    });
+  }, []);
+
+  const setStudentExtraPoints = useCallback((studentId: string, term: AcademicTerm, points: number) => {
+    setData((prev) => {
+      if (!prev.students.some((student) => student.id === studentId)) return prev;
+      return { ...prev, studentExtraPoints: updateStudentExtraPoints(prev.studentExtraPoints, studentId, term, points) };
     });
   }, []);
 
@@ -253,6 +264,7 @@ export function useSchoolData() {
     addTurma,
     removeTurma,
     setTermTotalPoints,
+    setStudentExtraPoints,
     addActivity,
     updateActivity,
     removeActivity,

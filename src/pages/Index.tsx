@@ -125,6 +125,7 @@ const Index = () => {
             data={school.data}
             selectedTerm={selectedTerm}
             setTermTotalPoints={school.setTermTotalPoints}
+            setStudentExtraPoints={school.setStudentExtraPoints}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
@@ -138,6 +139,7 @@ const Index = () => {
         {currentTurma && (
           <TurmaTab
             turma={currentTurma}
+            setStudentExtraPoints={school.setStudentExtraPoints}
             data={school.data}
             selectedTerm={selectedTerm}
             addActivity={school.addActivity}

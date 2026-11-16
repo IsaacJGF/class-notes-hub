@@ -43,4 +43,11 @@ export interface SchoolData {
   activities: Activity[];
   activityRecords: ActivityRecord[];
   termSettings: TermSettings[];
+  studentExtraPoints: StudentExtraPoints[];
+}
+
+export interface StudentExtraPoints {
+  studentId: string;
+  term: AcademicTerm;
+  points: number;
 }

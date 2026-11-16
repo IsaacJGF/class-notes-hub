@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, Circle, Download, BarChart2, TableIcon, Search, X
 import * as XLSX from "xlsx";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ChartsSubpage } from "@/components/ChartsSubpage";
+import { ExtraPointsInput } from "@/components/ExtraPointsInput";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
   formatActivityExportResult,
   getIndexedActivityRecord,
   getStudentTermSummary,
+  getStudentExtraPoints,
   getTermLabel,
   getTermTotalPoints,
   indexActivityRecords,
@@ -39,6 +41,7 @@ interface Props {
   data: SchoolData;
   selectedTerm: AcademicTerm;
   setTermTotalPoints: (turmaId: string, term: AcademicTerm, totalPoints: number) => void;
+  setStudentExtraPoints: (studentId: string, term: AcademicTerm, points: number) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
@@ -55,6 +58,7 @@ export function SummaryTab({
   data,
   selectedTerm,
   setTermTotalPoints,
+  setStudentExtraPoints,
   toggleActivityRecord,
   getActivityRecordFull,
   setActivityOnTimeOverride,
@@ -188,10 +192,10 @@ export function SummaryTab({
           ? getTermTotalPoints(data.termSettings, turma.id, selectedTerm)
           : 0;
 
-        return [student.id, getStudentTermSummary(student.id, activities, recordIndex, totalPoints)];
+        return [student.id, getStudentTermSummary(student.id, activities, recordIndex, totalPoints, getStudentExtraPoints(data.studentExtraPoints, student.id, selectedTerm))];
       }),
     ),
-    [allFilteredStudents, termActivities, data.turmas, data.termSettings, selectedTerm, recordIndex],
+    [allFilteredStudents, termActivities, data.turmas, data.termSettings, data.studentExtraPoints, selectedTerm, recordIndex],
   );
 
   const getActivityStatus = (studentId: string, activityId: string) => {
@@ -239,6 +243,8 @@ export function SummaryTab({
       "Atrasadas (70%)",
       "Pendentes",
       "Aproveitamento (%)",
+      "Nota das atividades",
+      "Pontos extras",
       "Nota final",
       "Nota máxima",
       "Valor por atividade",
@@ -248,7 +254,8 @@ export function SummaryTab({
       }),
     ];
     const rows = filteredStudents.map((student) => {
-      const summary = studentSummaries.get(student.id)!;
+      const summary = studentSummaries.get(student.id);
+      if (!summary) return [];
       const actColumns = filteredActivities.map((activity) => {
         const turma = data.turmas.find((t) => t.name === student.turma);
         if (turma?.id !== activity.turmaId) return "—";
@@ -265,6 +272,8 @@ export function SummaryTab({
         summary.late,
         summary.pending,
         summary.weightedPercentage,
+        summary.activityGrade,
+        summary.extraPoints,
         summary.finalGrade,
         summary.totalPoints,
         roundGrade(summary.activityValue),
@@ -572,6 +581,7 @@ export function SummaryTab({
                     <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pendentes</th>
                     <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>% Aproveitamento</th>
                     <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Nota final</th>
+                    <th className="sticky top-0 z-20" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos extras</th>
                     {filteredActivities.map((a) => (
                       <th key={a.id} className="sticky top-0 z-20 text-center relative" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "8rem" }}>
                         <DropdownMenu>
@@ -637,7 +647,8 @@ export function SummaryTab({
                 </thead>
                 <tbody>
                   {filteredStudents.map((student) => {
-                    const summary = studentSummaries.get(student.id)!;
+                    const summary = studentSummaries.get(student.id);
+                    if (!summary) return null;
                     const pct = summary.activityCount > 0 ? summary.weightedPercentage : null;
 
                     return (
@@ -692,6 +703,9 @@ export function SummaryTab({
                             / {formatPoints(summary.totalPoints)}
                           </span>
                         </td>
+                        <td>
+                          <ExtraPointsInput studentId={student.id} studentName={student.name} term={selectedTerm} points={summary.extraPoints} onChange={setStudentExtraPoints} />
+                        </td>
                         {filteredActivities.map((a) => {
                           const turma = data.turmas.find((t) => t.name === student.turma);
                           if (turma?.id !== a.turmaId) {
@@ -726,10 +740,8 @@ export function SummaryTab({
                                   <AlertTriangle size={16} style={{ color: "hsl(38 92% 45%)" }} />
                                 ) : isDone ? (
                                   <CheckCircle size={16} style={{ color: "hsl(var(--done))" }} />
-                                ) : status === false ? (
-                                  <XCircle size={16} style={{ color: "hsl(var(--not-done))" }} />
                                 ) : (
-                                  <Circle size={14} className="opacity-20" />
+                                  <XCircle size={18} strokeWidth={2.5} className="text-destructive" />
                                 )}
                               </button>
                             </td>

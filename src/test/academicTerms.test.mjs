@@ -13,6 +13,8 @@ import {
   normalizeAcademicTerm,
   normalizeSchoolData,
   updateActivityDetails,
+  getStudentExtraPoints,
+  updateStudentExtraPoints,
 } from "../lib/academicTerms.ts";
 
 function activity(id, overrides = {}) {
@@ -278,4 +280,43 @@ test("trimestre sem atividades não divide a nota por zero", () => {
 
 test("formata datas usando o calendário local", () => {
   assert.equal(formatLocalDate(new Date(2026, 7, 23, 21, 30)), "2026-08-23");
+});
+
+test("pontos extras individuais somam à nota sem mudar o aproveitamento das atividades", () => {
+  const activities = [activity("a"), activity("b")];
+  const records = indexActivityRecords([record("a")]);
+  const summary = getStudentTermSummary("ana", activities, records, 10, 1.5);
+  assert.equal(summary.activityGrade, 5);
+  assert.equal(summary.extraPoints, 1.5);
+  assert.equal(summary.finalGrade, 6.5);
+  assert.equal(summary.weightedPercentage, 50);
+});
+
+test("alunos sem pontos extras mantêm sua nota original", () => {
+  const entries = updateStudentExtraPoints([], "ana", 1, 2);
+  assert.equal(getStudentExtraPoints(entries, "bruno", 1), 0);
+  assert.equal(getStudentTermSummary("bruno", [activity("a")], indexActivityRecords([]), 10, getStudentExtraPoints(entries, "bruno", 1)).finalGrade, 0);
+});
+
+test("extras são isolados por aluno e trimestre, editáveis e removidos ao limpar", () => {
+  let entries = updateStudentExtraPoints([], "ana", 1, 1.5);
+  entries = updateStudentExtraPoints(entries, "ana", 2, 2);
+  entries = updateStudentExtraPoints(entries, "ana", 1, 3);
+  assert.equal(getStudentExtraPoints(entries, "ana", 1), 3);
+  assert.equal(getStudentExtraPoints(entries, "ana", 2), 2);
+  assert.equal(entries.length, 2);
+  entries = updateStudentExtraPoints(entries, "ana", 1, 0);
+  assert.equal(getStudentExtraPoints(entries, "ana", 1), 0);
+  assert.equal(getStudentExtraPoints(entries, "ana", 2), 2);
+});
+
+test("normaliza dados antigos e preserva extras ao salvar e recarregar", () => {
+  assert.deepEqual(normalizeSchoolData({}).studentExtraPoints, []);
+  const original = normalizeSchoolData({ studentExtraPoints: [{ studentId: "ana", term: 2, points: 1.25 }] });
+  assert.equal(getStudentExtraPoints(normalizeSchoolData(JSON.parse(JSON.stringify(original))).studentExtraPoints, "ana", 2), 1.25);
+});
+
+test("extra soma sem limitar à nota máxima das atividades e aceita trimestre sem atividades", () => {
+  assert.equal(getStudentTermSummary("ana", [activity("a")], indexActivityRecords([record("a")]), 10, 2).finalGrade, 12);
+  assert.equal(getStudentTermSummary("ana", [], indexActivityRecords([]), 10, 2).finalGrade, 2);
 });
