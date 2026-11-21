@@ -347,7 +347,11 @@ export function ActivitySummary({
                       aria-label={`${student.name}: ${activity.name} — ${getActivityStatusLabel(activity, record)}`}
                       className="mx-auto flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-muted"
                     >
-                      {late ? <AlertTriangle size={17} className="text-warning" /> : isDone ? <CheckCircle size={17} className="text-done" /> : <XCircle size={17} className="text-destructive" />}
+                      {late
+                        ? <AlertTriangle size={17} style={{ color: "hsl(32 55% 46%)" }} />
+                        : isDone
+                          ? <CheckCircle size={17} style={{ color: "hsl(var(--present))" }} />
+                          : <XCircle size={17} style={{ color: "hsl(var(--absent))" }} />}
                     </button>
                   </td>;
                 })}
