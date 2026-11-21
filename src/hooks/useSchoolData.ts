@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { AcademicTerm, SchoolData, Student, Turma, Activity, ActivityRecord, TermSettings } from "@/types";
+import { AcademicTerm, EvaluationComponent, SchoolData, Student, Turma, Activity, ActivityRecord, TermSettings } from "@/types";
 import {
+  EVALUATION_BLOCKS,
   formatLocalDate,
   normalizeSchoolData,
+  roundGrade,
   updateActivityDetails,
   updateStudentExtraPoints,
   type ActivityChanges,
@@ -11,12 +13,15 @@ import {
 const STORAGE_KEY = "school_control_data";
 
 const defaultData: SchoolData = {
+  schemaVersion: 2,
   students: [],
   turmas: [],
   activities: [],
   activityRecords: [],
   termSettings: [],
   studentExtraPoints: [],
+  evaluationComponents: [],
+  componentScores: [],
 };
 
 function generateId(): string {
@@ -28,7 +33,9 @@ export function useSchoolData() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) return normalizeSchoolData(JSON.parse(stored));
-    } catch {}
+    } catch {
+      // O estado padrão mantém a aplicação iniciável se o armazenamento local estiver inválido.
+    }
     return defaultData;
   });
 
@@ -70,6 +77,7 @@ export function useSchoolData() {
       students: prev.students.filter((s) => s.id !== id),
       studentExtraPoints: prev.studentExtraPoints.filter((entry) => entry.studentId !== id),
       activityRecords: prev.activityRecords.filter((r) => r.studentId !== id),
+      componentScores: prev.componentScores.filter((score) => score.studentId !== id),
     }));
   }, []);
 
@@ -82,7 +90,7 @@ export function useSchoolData() {
     const turma: Turma = { id: generateId(), name: trimmedName };
     setData((prev) => {
       if (prev.turmas.some((t) => t.name.toLowerCase() === trimmedName.toLowerCase())) return prev;
-      return { ...prev, turmas: [...prev.turmas, turma] };
+      return normalizeSchoolData({ ...prev, turmas: [...prev.turmas, turma] });
     });
     return turma;
   }, [data.turmas]);
@@ -98,6 +106,9 @@ export function useSchoolData() {
       const removedActivityIds = new Set(
         prev.activities.filter((activity) => activity.turmaId === id).map((activity) => activity.id),
       );
+      const removedComponentIds = new Set(
+        prev.evaluationComponents.filter((component) => component.turmaId === id).map((component) => component.id),
+      );
 
       return {
         ...prev,
@@ -109,6 +120,10 @@ export function useSchoolData() {
         ),
         termSettings: prev.termSettings.filter((setting) => setting.turmaId !== id),
         studentExtraPoints: prev.studentExtraPoints.filter((entry) => !removedStudentIds.has(entry.studentId)),
+        evaluationComponents: prev.evaluationComponents.filter((component) => component.turmaId !== id),
+        componentScores: prev.componentScores.filter(
+          (score) => !removedStudentIds.has(score.studentId) && !removedComponentIds.has(score.componentId),
+        ),
       };
     });
   }, []);
@@ -139,6 +154,98 @@ export function useSchoolData() {
       return { ...prev, studentExtraPoints: updateStudentExtraPoints(prev.studentExtraPoints, studentId, term, points) };
     });
   }, []);
+
+  const setStudentComponentScore = useCallback((studentId: string, componentId: string, score: number | null) => {
+    const component = data.evaluationComponents.find((item) => item.id === componentId);
+    if (!component) return "Subramificação não encontrada.";
+    if (!data.students.some((student) => student.id === studentId)) return "Aluno não encontrado.";
+    if (score !== null && (!Number.isFinite(score) || score < 0)) return "Digite uma nota igual ou maior que zero.";
+    if (score !== null && component.maxPoints !== null && score > component.maxPoints) {
+      return `O limite desta subramificação é ${component.maxPoints} pontos.`;
+    }
+
+    setData((prev) => {
+      const remaining = prev.componentScores.filter((entry) => entry.studentId !== studentId || entry.componentId !== componentId);
+      const componentScores = score === null ? remaining : [...remaining, { studentId, componentId, score }];
+      const studentExtraPoints = component.blockId === "PE"
+        ? updateStudentExtraPoints(
+            prev.studentExtraPoints,
+            studentId,
+            component.term,
+            componentScores
+              .filter((entry) => entry.studentId === studentId && data.evaluationComponents.some((item) => item.id === entry.componentId && item.blockId === "PE" && item.term === component.term))
+              .reduce((sum, entry) => sum + entry.score, 0),
+          )
+        : prev.studentExtraPoints;
+      return {
+        ...prev,
+        componentScores,
+        studentExtraPoints,
+      };
+    });
+    return null;
+  }, [data.evaluationComponents, data.students]);
+
+  const saveEvaluationConfiguration = useCallback((turmaId: string, term: AcademicTerm, draftComponents: EvaluationComponent[]) => {
+    const nextComponents = draftComponents.map((component) => ({ ...component }));
+    for (const block of EVALUATION_BLOCKS) {
+      const blockComponents = nextComponents.filter((component) => component.blockId === block.id).sort((a, b) => a.order - b.order);
+      if (blockComponents.length === 0) return `Mantenha pelo menos um campo em ${block.label}.`;
+      if (blockComponents.some((component) => !component.name.trim())) return `Informe o nome de todas as subramificações de ${block.label}.`;
+      if (block.maxPoints !== null) {
+        if (blockComponents.length === 1) blockComponents[0].maxPoints = 20;
+        if (blockComponents.some((component) => component.maxPoints === null)) return `${block.label}: cada subramificação precisa ter um limite definido.`;
+        const allocated = roundGrade(blockComponents.reduce((sum, component) => sum + (component.maxPoints ?? 0), 0));
+        if (allocated !== 20) return `${block.label}: distribua exatamente 20 pontos entre as subramificações (atual: ${allocated}).`;
+      }
+      if (blockComponents.some((component) => component.maxPoints !== null && (!Number.isFinite(component.maxPoints) || component.maxPoints < 0))) {
+        return `Há um limite inválido em ${block.label}.`;
+      }
+    }
+
+    const currentComponents = data.evaluationComponents.filter((component) => component.turmaId === turmaId && component.term === term);
+    const currentActivityIds = new Set(currentComponents.filter((component) => component.kind === "activities").map((component) => component.id));
+    const nextIds = new Set(nextComponents.map((component) => component.id));
+    if ([...currentActivityIds].some((id) => !nextIds.has(id))) return "A ramificação fixa Atividades do AEP deve permanecer configurada.";
+    for (const component of nextComponents) {
+      if (data.componentScores.some((score) => score.componentId === component.id && component.maxPoints !== null && score.score > component.maxPoints)) {
+        return `Há uma nota acima do novo limite de ${component.name}. Ajuste-a antes de salvar a configuração.`;
+      }
+    }
+
+    const scoped = nextComponents.map((component, order) => ({ ...component, turmaId, term, order }));
+    const removedIds = new Set(currentComponents.filter((component) => !nextIds.has(component.id)).map((component) => component.id));
+    const activityMaximum = scoped.find((component) => component.blockId === "AEP" && component.kind === "activities")?.maxPoints;
+    setData((prev) => {
+      const componentScores = prev.componentScores.filter((score) => !removedIds.has(score.componentId));
+      const turmaName = data.turmas.find((item) => item.id === turmaId)?.name;
+      const peIds = new Set(scoped.filter((component) => component.blockId === "PE").map((component) => component.id));
+      let studentExtraPoints = prev.studentExtraPoints;
+      if (turmaName) {
+        for (const student of prev.students.filter((item) => item.turma === turmaName)) {
+          const total = componentScores
+            .filter((score) => score.studentId === student.id && peIds.has(score.componentId))
+            .reduce((sum, score) => sum + score.score, 0);
+          studentExtraPoints = updateStudentExtraPoints(studentExtraPoints, student.id, term, total);
+        }
+      }
+      return {
+        ...prev,
+        evaluationComponents: [
+          ...prev.evaluationComponents.filter((component) => component.turmaId !== turmaId || component.term !== term),
+          ...scoped,
+        ],
+        componentScores,
+        studentExtraPoints,
+        termSettings: activityMaximum === undefined || activityMaximum === null
+          ? prev.termSettings
+          : prev.termSettings.some((setting) => setting.turmaId === turmaId && setting.term === term)
+            ? prev.termSettings.map((setting) => setting.turmaId === turmaId && setting.term === term ? { ...setting, totalPoints: activityMaximum } : setting)
+            : [...prev.termSettings, { turmaId, term, totalPoints: activityMaximum }],
+      };
+    });
+    return null;
+  }, [data.evaluationComponents, data.componentScores, data.turmas]);
 
   // --- Activities ---
   const addActivity = useCallback((turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => {
@@ -265,6 +372,8 @@ export function useSchoolData() {
     removeTurma,
     setTermTotalPoints,
     setStudentExtraPoints,
+    setStudentComponentScore,
+    saveEvaluationConfiguration,
     addActivity,
     updateActivity,
     removeActivity,

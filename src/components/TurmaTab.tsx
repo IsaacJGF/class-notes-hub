@@ -1,22 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { AcademicTerm, SchoolData, Turma, Activity, ActivityRecord } from "@/types";
-import { Plus, Trash2, CalendarPlus, Download, Search, X, LayoutDashboard } from "lucide-react";
-import * as XLSX from "xlsx";
+import { AcademicTerm, EvaluationComponent, SchoolData, Turma, Activity, ActivityRecord } from "@/types";
+import { Plus, Trash2, CalendarPlus, Search, X, Pencil } from "lucide-react";
 import { matchesAccentAware } from "@/lib/textSearch";
-import { ExtraPointsInput } from "@/components/ExtraPointsInput";
+import { Gradebook } from "@/components/Gradebook";
+import { ChartsSubpage } from "@/components/ChartsSubpage";
 import {
   formatLocalDate,
-  formatPoints,
-  formatActivityExportResult,
-  getIndexedActivityRecord,
-  getStudentTermSummary,
-  getStudentExtraPoints,
   getTermActivities,
   getTermLabel,
-  getTermTotalPoints,
-  indexActivityRecords,
   isActivityLate,
-  roundGrade,
+  type ActivityChanges,
 } from "@/lib/academicTerms";
 
 type DeadlineMode = "none" | "date" | "days";
@@ -25,31 +18,30 @@ interface Props {
   turma: Turma;
   data: SchoolData;
   selectedTerm: AcademicTerm;
-  setStudentExtraPoints: (studentId: string, term: AcademicTerm, points: number) => void;
+  setStudentComponentScore: (studentId: string, componentId: string, score: number | null) => string | null;
+  saveEvaluationConfiguration: (turmaId: string, term: AcademicTerm, components: EvaluationComponent[]) => string | null;
   addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
   removeActivity: (id: string) => void;
+  updateActivity: (id: string, changes: ActivityChanges) => void;
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecord: (studentId: string, activityId: string) => boolean | null;
   getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
-  initialDate?: string;
-  onInitialDateConsumed?: () => void;
-  onOpenSummary?: () => void;
 }
 
 export function TurmaTab({
   turma,
   data,
   selectedTerm,
-  setStudentExtraPoints,
+  setStudentComponentScore,
+  saveEvaluationConfiguration,
   addActivity,
   removeActivity,
+  updateActivity,
   toggleActivityRecord,
   getActivityRecord,
   getActivityRecordFull,
-  initialDate,
-  onInitialDateConsumed,
-  onOpenSummary,
+  setActivityOnTimeOverride,
 }: Props) {
   const [newActivityName, setNewActivityName] = useState("");
   const [newActivityDate, setNewActivityDate] = useState(() => formatLocalDate());
@@ -57,18 +49,23 @@ export function TurmaTab({
   const [newActivityDeadline, setNewActivityDeadline] = useState("");
   const [newActivityDeadlineDays, setNewActivityDeadlineDays] = useState(7);
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate());
-
-  useEffect(() => {
-    if (initialDate) {
-      setSelectedDate(initialDate);
-      onInitialDateConsumed?.();
-    }
-  }, [initialDate, onInitialDateConsumed]);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; studentId: string; activityId: string } | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -121,18 +118,6 @@ export function TurmaTab({
     [data.activities, turma.id, selectedTerm]
   );
 
-  const termTotalPoints = getTermTotalPoints(data.termSettings, turma.id, selectedTerm);
-  const recordIndex = useMemo(() => indexActivityRecords(data.activityRecords), [data.activityRecords]);
-  const studentSummaries = useMemo(
-    () => new Map(
-      allTurmaStudents.map((student) => [
-        student.id,
-        getStudentTermSummary(student.id, turmaActivities, recordIndex, termTotalPoints, getStudentExtraPoints(data.studentExtraPoints, student.id, selectedTerm)),
-      ]),
-    ),
-    [allTurmaStudents, turmaActivities, recordIndex, termTotalPoints, data.studentExtraPoints, selectedTerm],
-  );
-
   const dailyActivities = useMemo(
     () => turmaActivities.filter((a) => a.date === selectedDate),
     [turmaActivities, selectedDate]
@@ -168,78 +153,6 @@ export function TurmaTab({
     return `${day}/${m}`;
   };
 
-  const exportTermExcel = () => {
-    const headers = [
-      "Aluno",
-      "Turma",
-      "Trimestre",
-      "No prazo",
-      "Atrasadas (70%)",
-      "Pendentes",
-      "Aproveitamento (%)",
-      "Nota das atividades",
-      "Pontos extras",
-      "Nota final",
-      "Nota máxima",
-      "Valor por atividade",
-      ...turmaActivities.map((activity) => {
-        const deadline = activity.deadline ? ` | prazo ${formatShort(activity.deadline)}` : "";
-        return `${formatShort(activity.date)} - ${activity.name}${deadline}`;
-      }),
-    ];
-    const rows = allTurmaStudents.map((student) => {
-      const summary = studentSummaries.get(student.id);
-      if (!summary) return [];
-      const activities = turmaActivities.map((activity) => {
-        const record = getIndexedActivityRecord(recordIndex, student.id, activity.id);
-        return formatActivityExportResult(activity, record, summary.activityValue);
-      });
-
-      return [
-        student.name,
-        turma.name,
-        getTermLabel(selectedTerm),
-        summary.onTime,
-        summary.late,
-        summary.pending,
-        summary.weightedPercentage,
-        summary.activityGrade,
-        summary.extraPoints,
-        summary.finalGrade,
-        summary.totalPoints,
-        roundGrade(summary.activityValue),
-        ...activities,
-      ];
-    });
-    const allRows: (string | number)[][] = [
-      [`Turma ${turma.name} - ${getTermLabel(selectedTerm)} - Nota máxima: ${formatPoints(termTotalPoints)}`],
-      [],
-      headers,
-      ...rows,
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(allRows);
-    const columnCount = headers.length;
-    ws["!cols"] = headers.map((header, colIdx) => {
-      const longestCell = allRows.reduce((maxLength, row) => {
-        const cellValue = row[colIdx];
-        const cellText = cellValue == null ? "" : String(cellValue);
-        return Math.max(maxLength, cellText.length);
-      }, String(header).length);
-      return { wch: Math.max(10, Math.min(40, longestCell + 2)) };
-    });
-    for (let rowIdx = 0; rowIdx < allRows.length; rowIdx += 1) {
-      for (let colIdx = 1; colIdx < columnCount; colIdx += 1) {
-        const address = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
-        const cell = ws[address];
-        if (!cell) continue;
-        cell.s = { ...(cell.s || {}), alignment: { horizontal: "center", vertical: "center" } };
-      }
-    }
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `${selectedTerm}º trimestre`);
-    XLSX.writeFile(wb, `turma_${turma.name}_${selectedTerm}o_trimestre.xlsx`);
-  };
-
   return (
     <div className="space-y-3 sm:space-y-4 p-2 sm:p-4">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
@@ -255,16 +168,6 @@ export function TurmaTab({
           </span>
         </div>
         <div className="flex items-center gap-2 sm:ml-auto">
-          {onOpenSummary && (
-            <button
-              onClick={onOpenSummary}
-              className="flex items-center gap-1 rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
-              style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}
-              title="Abrir resumo desta turma"
-            >
-              <LayoutDashboard size={12} /> Resumo
-            </button>
-          )}
           <button
             onClick={() => setStudentSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
             className="rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80 min-h-[36px] touch-manipulation"
@@ -306,16 +209,27 @@ export function TurmaTab({
         </div>
       </div>
 
+      <Gradebook
+        turma={turma}
+        term={selectedTerm}
+        data={data}
+        setStudentComponentScore={setStudentComponentScore}
+        saveEvaluationConfiguration={saveEvaluationConfiguration}
+        searchQuery={searchQuery}
+      />
+
+      <details className="section-card">
+        <summary className="section-card-header cursor-pointer select-none">
+          <span className="section-card-title">Gráficos e análises</span>
+        </summary>
+        <div className="p-3 sm:p-4">
+          <ChartsSubpage data={data} selectedTerm={selectedTerm} filterTurma={turma.name} filterDateFrom="" filterDateTo="" />
+        </div>
+      </details>
+
       <div className="section-card">
         <div className="section-card-header">
           <span className="section-card-title">Data da Turma</span>
-          <button
-            onClick={exportTermExcel}
-            className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80 min-h-[36px] touch-manipulation"
-            style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
-          >
-            <Download size={12} /> Exportar Excel
-          </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4">
           <input
@@ -328,11 +242,6 @@ export function TurmaTab({
           <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
             {dailyActivities.length} atividade(s) neste dia
           </span>
-          {turmaActivities.length > 0 && (
-            <span className="text-xs sm:ml-auto" style={{ color: "hsl(var(--muted-foreground))" }}>
-              {formatPoints(termTotalPoints / turmaActivities.length)} por atividade
-            </span>
-          )}
         </div>
       </div>
 
@@ -419,7 +328,7 @@ export function TurmaTab({
 
       <div className="section-card">
         <div className="section-card-header">
-          <span className="section-card-title">Planilha da Turma — {formatDate(selectedDate)}</span>
+          <span className="section-card-title">Registros das Atividades — {formatDate(selectedDate)}</span>
         </div>
         <div className="overflow-auto max-h-[70vh]">
           {turmaStudents.length === 0 ? (
@@ -442,7 +351,19 @@ export function TurmaTab({
                         <div className="flex items-center justify-center gap-1">
                           {a.name}
                           <button
-                            onClick={() => removeActivity(a.id)}
+                            onClick={() => {
+                              const nextName = window.prompt("Nome da atividade", a.name);
+                              if (nextName?.trim()) updateActivity(a.id, { name: nextName });
+                            }}
+                            className="ml-1 rounded-full p-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                            title="Renomear atividade"
+                          >
+                            <Pencil size={10} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Apagar a atividade “${a.name}” e seus registros de entrega?`)) removeActivity(a.id);
+                            }}
                             className="ml-1 rounded-full p-0.5 opacity-50 hover:opacity-100 transition-opacity"
                             title="Remover atividade"
                           >
@@ -457,10 +378,6 @@ export function TurmaTab({
                       </div>
                     </th>
                   ))}
-                  <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                    Nota do trimestre
-                  </th>
-                  <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Pontos extras</th>
                 </tr>
               </thead>
               <tbody>
@@ -487,6 +404,11 @@ export function TurmaTab({
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => toggleActivityRecord(student.id, a.id)}
+                              onContextMenu={(event) => {
+                                if (!isDone) return;
+                                event.preventDefault();
+                                setContextMenu({ x: event.clientX, y: event.clientY, studentId: student.id, activityId: a.id });
+                              }}
                               title={tooltip}
                               className={isDone && !late ? "btn-toggle-done" : "btn-toggle-pending"}
                             >
@@ -496,15 +418,6 @@ export function TurmaTab({
                         </td>
                       );
                     })}
-                    <td className="text-center whitespace-nowrap font-semibold" style={{ color: "hsl(var(--primary))" }}>
-                      {formatPoints(studentSummaries.get(student.id)?.finalGrade ?? 0)}
-                      <span className="ml-1 text-[10px] font-normal" style={{ color: "hsl(var(--muted-foreground))" }}>
-                        / {formatPoints(termTotalPoints)}
-                      </span>
-                    </td>
-                    <td>
-                      <ExtraPointsInput studentId={student.id} studentName={student.name} term={selectedTerm} points={studentSummaries.get(student.id)?.extraPoints ?? 0} onChange={setStudentExtraPoints} />
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -512,6 +425,42 @@ export function TurmaTab({
           )}
         </div>
       </div>
+      {contextMenu && (() => {
+        const activity = data.activities.find((item) => item.id === contextMenu.activityId);
+        const record = getActivityRecordFull(contextMenu.studentId, contextMenu.activityId);
+        if (!activity) return null;
+        const markedAt = record?.markedAt ?? activity.date;
+        const isActuallyLate = !!activity.deadline && markedAt > activity.deadline;
+        const overridden = !!record?.overrideOnTime;
+        return (
+          <div
+            className="fixed z-50 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground">Status da entrega</div>
+            {!activity.deadline ? (
+              <div className="px-3 py-2 text-xs text-muted-foreground">Esta atividade não possui prazo definido.</div>
+            ) : isActuallyLate && !overridden ? (
+              <button
+                className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => { setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, true); setContextMenu(null); }}
+              >
+                Marcar como feito no prazo
+              </button>
+            ) : overridden ? (
+              <button
+                className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => { setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, false); setContextMenu(null); }}
+              >
+                Reverter para atrasado
+              </button>
+            ) : (
+              <div className="px-3 py-2 text-xs text-muted-foreground">Esta entrega está dentro do prazo.</div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
