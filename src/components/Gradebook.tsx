@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
-import { Download, Settings2, Plus, Trash2, ChevronDown, Table2, Calculator } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Turma } from "@/types";
+import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Student, Turma } from "@/types";
 import {
   EVALUATION_BLOCKS,
   formatPoints,
+  getActivityStatusLabel,
   getStudentTermSummary,
   getTermActivities,
   getTermLabel,
   indexActivityRecords,
+  isActivityLate,
   roundGrade,
   type ActivityChanges,
 } from "@/lib/academicTerms";
@@ -17,11 +19,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ActivitySummary } from "@/components/ActivitySummary";
+import { TransferStudentDialog } from "@/components/TransferStudentDialog";
 
 interface Props {
   turma: Turma;
   term: AcademicTerm;
   data: SchoolData;
+  removeStudent: (id: string) => void;
+  transferStudent: (studentId: string, targetTurmaId: string) => void;
   searchQuery: string;
   studentSortOrder: "asc" | "desc";
   setStudentComponentScore: (studentId: string, componentId: string, score: number | null) => string | null;
@@ -40,6 +45,19 @@ type StudentGrades = {
   finalTotal: number;
 };
 
+type HistoricalActivity = {
+  activity: Activity;
+  record: ActivityRecord;
+  turmaId: string;
+  turmaName: string;
+};
+
+function formatHistoryDate(value?: string): string {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function makeId() {
   return globalThis.crypto?.randomUUID?.() ?? `component-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -52,6 +70,8 @@ export function Gradebook({
   turma,
   term,
   data,
+  removeStudent,
+  transferStudent,
   searchQuery,
   studentSortOrder,
   setStudentComponentScore,
@@ -65,6 +85,8 @@ export function Gradebook({
 }: Props) {
   const [configOpen, setConfigOpen] = useState(false);
   const [draftComponents, setDraftComponents] = useState<EvaluationComponent[]>([]);
+  const [expandedHistoryStudentId, setExpandedHistoryStudentId] = useState<string | null>(null);
+  const [studentToTransfer, setStudentToTransfer] = useState<Student | null>(null);
   const allStudents = useMemo(
     () => data.students
       .filter((student) => student.turma === turma.name)
@@ -78,6 +100,29 @@ export function Gradebook({
     () => searchQuery.trim() ? allStudents.filter((student) => matchesAccentAware(student.name, searchQuery)) : allStudents,
     [allStudents, searchQuery],
   );
+  const historyByStudent = useMemo(() => {
+    const studentIds = new Set(allStudents.map((student) => student.id));
+    const activitiesById = new Map(data.activities.map((activity) => [activity.id, activity]));
+    const turmaNamesById = new Map(data.turmas.map((item) => [item.id, item.name]));
+    const history = new Map<string, HistoricalActivity[]>();
+
+    for (const record of data.activityRecords) {
+      if (!studentIds.has(record.studentId)) continue;
+      const activity = activitiesById.get(record.activityId);
+      if (!activity || activity.turmaId === turma.id) continue;
+      const entries = history.get(record.studentId) ?? [];
+      entries.push({
+        activity,
+        record,
+        turmaId: activity.turmaId,
+        turmaName: turmaNamesById.get(activity.turmaId) ?? "Turma anterior",
+      });
+      history.set(record.studentId, entries);
+    }
+
+    for (const entries of history.values()) entries.sort((first, second) => second.activity.date.localeCompare(first.activity.date));
+    return history;
+  }, [allStudents, data.activities, data.activityRecords, data.turmas, turma.id]);
   const components = useMemo(
     () => data.evaluationComponents
       .filter((component) => component.turmaId === turma.id && component.term === term)
@@ -363,32 +408,127 @@ export function Gradebook({
                     <th>Aluno</th>
                     {componentsByBlock.map((block) => <th key={block.id} className="text-center">{block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span></th>)}
                     <th className="text-center">Nota final</th>
+                    <th className="text-center">Ações</th>
                   </tr></thead>
                   <tbody>{students.length === 0 ? (
-                    <tr><td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+                    <tr><td colSpan={9} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
                   ) : students.map((student) => {
                     const summary = gradesByStudent.get(student.id)!;
-                    return <tr key={student.id}>
-                      <td className="whitespace-nowrap font-medium">{student.name}</td>
-                      {componentsByBlock.map((block) => {
-                        const belowAverage = block.id !== "PE" && summary.blockTotals[block.id] < 14;
-                        return <td
-                          key={block.id}
-                          className={`text-center font-medium ${belowAverage ? "bg-destructive/10 font-semibold text-destructive" : ""}`}
-                          title={belowAverage ? "Abaixo da média de 14 pontos neste bloco" : undefined}
-                        >
-                          {formatPoints(summary.blockTotals[block.id])}
-                        </td>;
-                      })}
-                      <td className="text-center">
-                        <span
-                          className={`inline-flex min-w-16 justify-center rounded-full px-3 py-1 font-bold ${summary.finalTotal < 70 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
-                          title={summary.finalTotal < 70 ? "Nota final abaixo da média de 70 pontos" : undefined}
-                        >
-                          {formatPoints(summary.finalTotal)}
-                        </span>
-                      </td>
-                    </tr>;
+                    const history = historyByStudent.get(student.id) ?? [];
+                    const historyGroups = new Map<string, HistoricalActivity[]>();
+                    for (const entry of history) {
+                      const key = `${entry.turmaId}:${entry.activity.term}`;
+                      const group = historyGroups.get(key) ?? [];
+                      group.push(entry);
+                      historyGroups.set(key, group);
+                    }
+                    const historyExpanded = expandedHistoryStudentId === student.id;
+                    return (
+                      <Fragment key={student.id}>
+                        <tr>
+                          <td className="min-w-[220px] font-medium">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="whitespace-nowrap">{student.name}</span>
+                              {history.length > 0 && (
+                                <button
+                                  onClick={() => setExpandedHistoryStudentId(historyExpanded ? null : student.id)}
+                                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/10"
+                                  aria-expanded={historyExpanded}
+                                  aria-label={`${historyExpanded ? "Ocultar" : "Ver"} histórico de atividades de ${student.name}`}
+                                >
+                                  <History size={12} />Histórico ({history.length})
+                                  <ChevronDown size={12} className={`transition-transform ${historyExpanded ? "rotate-180" : ""}`} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          {componentsByBlock.map((block) => {
+                            const belowAverage = block.id !== "PE" && summary.blockTotals[block.id] < 14;
+                            return <td
+                              key={block.id}
+                              className={`text-center font-medium ${belowAverage ? "bg-destructive/10 font-semibold text-destructive" : ""}`}
+                              title={belowAverage ? "Abaixo da média de 14 pontos neste bloco" : undefined}
+                            >
+                              {formatPoints(summary.blockTotals[block.id])}
+                            </td>;
+                          })}
+                          <td className="text-center">
+                            <span
+                              className={`inline-flex min-w-16 justify-center rounded-full px-3 py-1 font-bold ${summary.finalTotal < 70 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
+                              title={summary.finalTotal < 70 ? "Nota final abaixo da média de 70 pontos" : undefined}
+                            >
+                              {formatPoints(summary.finalTotal)}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setStudentToTransfer(student)}
+                                disabled={data.turmas.length < 2}
+                                className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                title="Transferir para outra turma"
+                                aria-label={`Transferir ${student.name} para outra turma`}
+                              >
+                                <ArrowLeftRight size={15} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const activityCount = data.activityRecords.filter((record) => record.studentId === student.id).length;
+                                  const scoreCount = data.componentScores.filter((score) => score.studentId === student.id).length;
+                                  if (window.confirm(`Excluir ${student.name}? Serão apagados ${activityCount} registro(s) de atividade e ${scoreCount} nota(s), incluindo o histórico. Essa ação não pode ser desfeita.`)) removeStudent(student.id);
+                                }}
+                                className="rounded p-1.5 text-destructive transition-colors hover:bg-destructive/10"
+                                title="Excluir aluno e seus registros"
+                                aria-label={`Excluir ${student.name}`}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {historyExpanded && (
+                          <tr>
+                            <td colSpan={9} className="bg-muted/20 p-3 sm:p-4">
+                              <div className="space-y-4 rounded-lg border border-border bg-card p-3 sm:p-4">
+                                <div>
+                                  <p className="text-sm font-semibold">Histórico de atividades de {student.name}</p>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">Registros mantidos da(s) turma(s) anterior(es). As atividades da turma atual continuam na planilha normal.</p>
+                                </div>
+                                {[...historyGroups.entries()].map(([key, entries]) => (
+                                  <section key={key} className="space-y-2">
+                                    <h4 className="text-xs font-bold uppercase tracking-wide text-primary">
+                                      {entries[0].turmaName} · {getTermLabel(entries[0].activity.term)}
+                                    </h4>
+                                    <div className="grid gap-2 md:grid-cols-2">
+                                      {entries.map((entry) => {
+                                        const late = isActivityLate(entry.activity, entry.record);
+                                        const statusClass = !entry.record.done ? "border-destructive/20 bg-destructive/5 text-destructive" : late ? "border-amber-300/60 bg-amber-50 text-amber-700" : "border-emerald-300/60 bg-emerald-50 text-emerald-700";
+                                        return (
+                                          <div key={entry.activity.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+                                            <div className="min-w-0">
+                                              <p className="truncate text-sm font-medium">{entry.activity.name}</p>
+                                              <p className="text-[11px] text-muted-foreground">
+                                                Data: {formatHistoryDate(entry.activity.date)}
+                                                {entry.activity.deadline ? ` · Prazo ${formatHistoryDate(entry.activity.deadline)}` : ""}
+                                                {entry.record.markedAt ? ` · Feita em ${formatHistoryDate(entry.record.markedAt)}` : ""}
+                                              </p>
+                                            </div>
+                                            <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${statusClass}`}>
+                                              {!entry.record.done ? <XCircle size={13} /> : late ? <Clock3 size={13} /> : <CheckCircle2 size={13} />}
+                                              {entry.record.done ? (late ? "Feita com atraso" : getActivityStatusLabel(entry.activity, entry.record)) : "Não entregue"}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </section>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
                   })}</tbody>
                 </table>
               </div>
@@ -416,6 +556,14 @@ export function Gradebook({
           ))}
         </Tabs>
       </div>
+
+      <TransferStudentDialog
+        open={studentToTransfer !== null}
+        student={studentToTransfer}
+        turmas={data.turmas}
+        onOpenChange={(open) => { if (!open) setStudentToTransfer(null); }}
+        onTransfer={transferStudent}
+      />
 
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">

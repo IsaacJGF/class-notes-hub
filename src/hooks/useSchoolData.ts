@@ -81,6 +81,35 @@ export function useSchoolData() {
     }));
   }, []);
 
+  const transferStudent = useCallback((studentId: string, targetTurmaId: string) => {
+    setData((prev) => {
+      const student = prev.students.find((item) => item.id === studentId);
+      const targetTurma = prev.turmas.find((item) => item.id === targetTurmaId);
+      if (!student || !targetTurma || student.turma === targetTurma.name) return prev;
+
+      const existingActivityIds = new Set(
+        prev.activityRecords
+          .filter((record) => record.studentId === studentId)
+          .map((record) => record.activityId),
+      );
+      const pendingRecords: ActivityRecord[] = prev.activities
+        .filter((activity) => activity.turmaId === targetTurmaId && !existingActivityIds.has(activity.id))
+        .map((activity) => ({
+          id: generateId(),
+          studentId,
+          activityId: activity.id,
+          done: false,
+        }));
+
+      return {
+        ...prev,
+        students: prev.students.map((item) => item.id === studentId ? { ...item, turma: targetTurma.name } : item),
+        // Keep the student's previous class activity records and scores as history.
+        activityRecords: [...prev.activityRecords, ...pendingRecords],
+      };
+    });
+  }, []);
+
   // --- Turmas ---
   const addTurma = useCallback((name: string) => {
     const trimmedName = name.trim();
@@ -368,6 +397,7 @@ export function useSchoolData() {
     data,
     addStudent,
     removeStudent,
+    transferStudent,
     addTurma,
     removeTurma,
     setTermTotalPoints,

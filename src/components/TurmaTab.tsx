@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { AcademicTerm, Activity, ActivityRecord, EvaluationComponent, SchoolData, Turma } from "@/types";
-import { Search, X } from "lucide-react";
+import { Search, UserPlus, X } from "lucide-react";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { Gradebook } from "@/components/Gradebook";
 import { getTermActivities, getTermLabel, type ActivityChanges } from "@/lib/academicTerms";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Props {
   turma: Turma;
   data: SchoolData;
   selectedTerm: AcademicTerm;
+  addStudent: (name: string, turmaId: string) => void;
+  removeStudent: (id: string) => void;
+  transferStudent: (studentId: string, targetTurmaId: string) => void;
   setStudentComponentScore: (studentId: string, componentId: string, score: number | null) => string | null;
   saveEvaluationConfiguration: (turmaId: string, term: AcademicTerm, components: EvaluationComponent[]) => string | null;
   addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
@@ -23,6 +27,9 @@ export function TurmaTab({
   turma,
   data,
   selectedTerm,
+  addStudent,
+  removeStudent,
+  transferStudent,
   setStudentComponentScore,
   saveEvaluationConfiguration,
   addActivity,
@@ -35,6 +42,8 @@ export function TurmaTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
+  const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
+  const [newStudentName, setNewStudentName] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const focusAndSelectSearchInput = () => {
@@ -81,6 +90,14 @@ export function TurmaTab({
     () => getTermActivities(data.activities, turma.id, selectedTerm),
     [data.activities, turma.id, selectedTerm],
   );
+
+  const handleAddStudent = (event: FormEvent) => {
+    event.preventDefault();
+    if (!newStudentName.trim()) return;
+    addStudent(newStudentName.trim(), turma.id);
+    setNewStudentName("");
+    setAddStudentDialogOpen(false);
+  };
 
   return (
     <div className="space-y-3 p-2 sm:space-y-4 sm:p-4">
@@ -136,6 +153,13 @@ export function TurmaTab({
               <Search size={12} /> Pesquisar
             </button>
           )}
+          <button
+            onClick={() => setAddStudentDialogOpen(true)}
+            className="flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm hover:opacity-90"
+            style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+          >
+            <UserPlus size={14} />Adicionar aluno
+          </button>
         </div>
       </div>
 
@@ -143,6 +167,8 @@ export function TurmaTab({
         turma={turma}
         term={selectedTerm}
         data={data}
+        removeStudent={removeStudent}
+        transferStudent={transferStudent}
         searchQuery={searchQuery}
         studentSortOrder={studentSortOrder}
         setStudentComponentScore={setStudentComponentScore}
@@ -154,6 +180,30 @@ export function TurmaTab({
         getActivityRecordFull={getActivityRecordFull}
         setActivityOnTimeOverride={setActivityOnTimeOverride}
       />
+
+      <Dialog open={addStudentDialogOpen} onOpenChange={setAddStudentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar aluno à turma {turma.name}</DialogTitle>
+            <DialogDescription>O aluno será incluído diretamente nesta turma. As atividades já cadastradas aparecerão como pendentes.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddStudent} className="space-y-4">
+            <input
+              autoFocus
+              type="text"
+              value={newStudentName}
+              onChange={(event) => setNewStudentName(event.currentTarget.value)}
+              placeholder="Nome completo do aluno"
+              aria-label="Nome do novo aluno"
+              className="min-h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+            />
+            <DialogFooter>
+              <button type="button" onClick={() => setAddStudentDialogOpen(false)} className="min-h-10 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancelar</button>
+              <button type="submit" disabled={!newStudentName.trim()} className="min-h-10 rounded-lg px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50" style={{ backgroundColor: "hsl(var(--primary))" }}>Adicionar aluno</button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
