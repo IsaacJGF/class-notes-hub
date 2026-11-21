@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, ActivityRecord, AcademicTerm, SchoolData, Student, Turma } from "@/types";
-import { AlertTriangle, ArrowRightLeft, CheckCircle, Download, MoreHorizontal, Plus, Pencil, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, CalendarDays, CheckCircle, Download, MoreHorizontal, Plus, Pencil, Trash2, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import {
@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipArrow, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type DeadlineMode = "none" | "date" | "days";
 
@@ -131,6 +132,15 @@ export function ActivitySummary({
   const formatShortDate = (date: string) => {
     const [, month, day] = date.split("-");
     return `${day}/${month}`;
+  };
+
+  const formatTooltipDate = (date: string) => {
+    const [year, month, day] = date.split("-").map(Number);
+    if (!year || !month || !day) return date;
+    const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "short" })
+      .format(new Date(year, month - 1, day))
+      .replace(/\./g, "");
+    return `${String(day).padStart(2, "0")} ${monthLabel} ${year}`;
   };
 
   const handleAddActivity = (event: React.FormEvent) => {
@@ -280,6 +290,7 @@ export function ActivitySummary({
       ) : activities.length === 0 ? (
         <div className="p-8 text-center text-sm text-muted-foreground">Ainda não há atividades neste trimestre. Cadastre a primeira acima.</div>
       ) : (
+        <TooltipProvider delayDuration={180}>
         <div className="max-h-[70vh] overflow-auto">
           <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
             <thead><tr>
@@ -331,34 +342,55 @@ export function ActivitySummary({
                   const record = getIndexedActivityRecord(recordIndex, student.id, activity.id);
                   const isDone = record?.done === true;
                   const late = isActivityLate(activity, record);
-                  const overridden = !!record?.overrideOnTime;
-                  const tooltip = !isDone
-                    ? "Pendente — clique para marcar como feita"
-                    : `${getActivityStatusLabel(activity, record)}${record?.markedAt ? ` — registrada em ${formatDate(record.markedAt)}` : ""}${late ? " · clique com o botão direito para corrigir" : overridden ? " · clique com o botão direito para reverter" : ""}`;
+                  const statusLabel = late ? "Atrasada" : isDone ? "No prazo" : "Pendente";
+                  const StatusIcon = late ? AlertTriangle : isDone ? CheckCircle : XCircle;
                   return <td key={activity.id} className="text-center">
-                    <button
-                      onClick={() => toggleActivityRecord(student.id, activity.id)}
-                      onContextMenu={(event) => {
-                        if (!isDone) return;
-                        event.preventDefault();
-                        setContextMenu({ x: event.clientX, y: event.clientY, studentId: student.id, activityId: activity.id });
-                      }}
-                      title={tooltip}
-                      aria-label={`${student.name}: ${activity.name} — ${getActivityStatusLabel(activity, record)}`}
-                      className="mx-auto flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-muted"
-                    >
-                      {late
-                        ? <AlertTriangle size={17} style={{ color: "hsl(32 55% 46%)" }} />
-                        : isDone
-                          ? <CheckCircle size={17} style={{ color: "hsl(var(--present))" }} />
-                          : <XCircle size={17} style={{ color: "hsl(var(--absent))" }} />}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => toggleActivityRecord(student.id, activity.id)}
+                          onContextMenu={(event) => {
+                            if (!isDone) return;
+                            event.preventDefault();
+                            setContextMenu({ x: event.clientX, y: event.clientY, studentId: student.id, activityId: activity.id });
+                          }}
+                          aria-label={`${student.name}: ${activity.name} — ${getActivityStatusLabel(activity, record)}`}
+                          className="mx-auto flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-muted"
+                        >
+                          <StatusIcon
+                            size={17}
+                            style={{ color: late ? "hsl(32 55% 46%)" : isDone ? "hsl(var(--present))" : "hsl(var(--absent))" }}
+                          />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" align="center" className="whitespace-nowrap">
+                        <TooltipArrow className="fill-[#F8FAFC] stroke-[#DCE5EF]" />
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-2 font-semibold ${late ? "bg-[#FEF3C7] text-[#92400E]" : isDone ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#FEE2E2] text-[#B91C1C]"}`}>
+                            <StatusIcon size={16} aria-hidden="true" />
+                            {statusLabel}
+                          </span>
+                          <span aria-hidden="true" className="h-8 w-px shrink-0 bg-[#DCE5EF]" />
+                          <span className="flex items-center gap-2">
+                            <CalendarDays size={17} className="shrink-0 text-[#64748B]" aria-hidden="true" />
+                            {isDone && record?.markedAt ? (
+                              <span><span>Registrada em </span><strong className="font-semibold">{formatTooltipDate(record.markedAt)}</strong></span>
+                            ) : activity.deadline ? (
+                              <span><span>Prazo até </span><strong className="font-semibold">{formatTooltipDate(activity.deadline)}</strong></span>
+                            ) : (
+                              <span>Sem registro de entrega</span>
+                            )}
+                          </span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
                   </td>;
                 })}
               </tr>;
             })}</tbody>
           </table>
         </div>
+        </TooltipProvider>
       )}
 
       {contextMenu && (() => {
