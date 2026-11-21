@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, Settings2, Plus, Trash2, ChevronDown, Table2, UsersRound, Star, Calculator } from "lucide-react";
+import { Download, Settings2, Plus, Trash2, ChevronDown, Table2, Calculator } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Turma } from "@/types";
@@ -390,25 +390,9 @@ export function Gradebook({
           </div>
 
           <TabsContent value="overview" className="mt-0 space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><Calculator size={18} /></span>
-                <div><p className="text-xs text-muted-foreground">Avaliações regulares</p><p className="text-lg font-bold">5 blocos<span className="ml-1 text-xs font-medium text-muted-foreground">× 20 pts</span></p></div>
-              </div>
-              <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><Star size={18} /></span>
-                <div><p className="text-xs text-muted-foreground">Pontuação extra</p><p className="text-lg font-bold">Sem teto<span className="ml-1 text-xs font-medium text-muted-foreground">somada à nota</span></p></div>
-              </div>
-              <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700"><UsersRound size={18} /></span>
-                <div><p className="text-xs text-muted-foreground">Alunos na turma</p><p className="text-lg font-bold">{allStudents.length}</p></div>
-              </div>
-            </div>
-
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-                <div><h3 className="font-semibold">Resumo geral das notas</h3><p className="mt-0.5 text-xs text-muted-foreground">Totais dos seis blocos e nota final de cada estudante.</p></div>
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Regular: até 100 pts · P.E.: sem teto</span>
+              <div className="border-b border-border px-4 py-3">
+                <h3 className="font-semibold">Resumo geral das notas</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="school-table min-w-full">
@@ -458,7 +442,7 @@ export function Gradebook({
           {componentsByBlock.map((block) => (
             <TabsContent key={block.id} value={block.id} className="mt-0 space-y-4">
               <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-border bg-muted/35 px-4 py-3">
-                <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bloco de avaliação</p><h2 className="mt-0.5 text-xl font-bold">{block.id === "PE" ? "Pontuação extra" : block.label}</h2><p className="mt-1 text-sm text-muted-foreground">{block.maxPoints === null ? "Sem limite global" : "Até " + formatPoints(block.maxPoints) + " pontos no bloco"}</p></div>
+                <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bloco de avaliação</p><h2 className="mt-0.5 text-xl font-bold">{block.id === "PE" ? "Pontuação extra" : block.label}</h2></div>
                 <div className="rounded-lg border border-border bg-card px-3 py-2 text-right shadow-sm"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Subramificações</p><p className="font-bold">{block.components.length}</p></div>
               </div>
 
