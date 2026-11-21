@@ -1,4 +1,6 @@
 export type AcademicTerm = 1 | 2 | 3;
+export type EvaluationBlockId = "AEP" | "AL" | "AV" | "AG" | "TESTE" | "PE";
+export type EvaluationComponentKind = "activities" | "manual";
 
 export interface Student {
   id: string;
@@ -38,16 +40,37 @@ export interface ActivityRecord {
 }
 
 export interface SchoolData {
+  schemaVersion: number;
   students: Student[];
   turmas: Turma[];
   activities: Activity[];
   activityRecords: ActivityRecord[];
   termSettings: TermSettings[];
   studentExtraPoints: StudentExtraPoints[];
+  evaluationComponents: EvaluationComponent[];
+  componentScores: StudentComponentScore[];
 }
 
 export interface StudentExtraPoints {
   studentId: string;
   term: AcademicTerm;
   points: number;
+}
+
+export interface EvaluationComponent {
+  id: string;
+  turmaId: string;
+  term: AcademicTerm;
+  blockId: EvaluationBlockId;
+  name: string;
+  /** null means that the component has no individual maximum (used by P.E.). */
+  maxPoints: number | null;
+  kind: EvaluationComponentKind;
+  order: number;
+}
+
+export interface StudentComponentScore {
+  studentId: string;
+  componentId: string;
+  score: number;
 }

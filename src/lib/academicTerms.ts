@@ -1,7 +1,30 @@
-import type { AcademicTerm, Activity, ActivityRecord, SchoolData, TermSettings, StudentExtraPoints } from "@/types";
+import type {
+  AcademicTerm,
+  Activity,
+  ActivityRecord,
+  EvaluationBlockId,
+  EvaluationComponent,
+  SchoolData,
+  StudentComponentScore,
+  TermSettings,
+  StudentExtraPoints,
+} from "@/types";
 
 export const ACADEMIC_TERMS: readonly AcademicTerm[] = [1, 2, 3];
 export const LATE_ACTIVITY_FACTOR = 0.7;
+export const FIXED_EVALUATION_BLOCKS: readonly EvaluationBlockId[] = ["AEP", "AL", "AV", "AG", "TESTE"];
+export const EVALUATION_BLOCKS: readonly { id: EvaluationBlockId; label: string; maxPoints: number | null }[] = [
+  { id: "AEP", label: "AEP", maxPoints: 20 },
+  { id: "AL", label: "AL", maxPoints: 20 },
+  { id: "AV", label: "AV", maxPoints: 20 },
+  { id: "AG", label: "AG", maxPoints: 20 },
+  { id: "TESTE", label: "Teste", maxPoints: 20 },
+  { id: "PE", label: "P.E.", maxPoints: null },
+];
+
+export function evaluationComponentId(turmaId: string, term: AcademicTerm, blockId: EvaluationBlockId, suffix: string): string {
+  return `eval:${turmaId}:${term}:${blockId}:${suffix}`;
+}
 
 export interface StudentTermSummary {
   activityCount: number;
@@ -30,34 +53,134 @@ export function normalizeAcademicTerm(value: unknown): AcademicTerm {
 
 export function normalizeSchoolData(rawData: unknown): SchoolData {
   const parsedData = (rawData && typeof rawData === "object" ? rawData : {}) as Partial<SchoolData>;
+  const schemaVersion = Number(parsedData.schemaVersion) || 1;
+  const students = Array.isArray(parsedData.students) ? parsedData.students : [];
+  const turmas = Array.isArray(parsedData.turmas) ? parsedData.turmas : [];
+  const activities = Array.isArray(parsedData.activities)
+    ? parsedData.activities.map((activity) => ({ ...activity, term: normalizeAcademicTerm(activity.term) }))
+    : [];
+  const termSettings = Array.isArray(parsedData.termSettings)
+    ? parsedData.termSettings
+        .filter((setting) => typeof setting.turmaId === "string")
+        .map((setting) => ({
+          ...setting,
+          term: normalizeAcademicTerm(setting.term),
+          totalPoints: Number.isFinite(Number(setting.totalPoints)) ? Math.max(0, Number(setting.totalPoints)) : 0,
+        }))
+    : [];
+  const studentExtraPoints = Array.isArray(parsedData.studentExtraPoints)
+    ? parsedData.studentExtraPoints
+        .filter((entry) => typeof entry.studentId === "string")
+        .map((entry) => ({ ...entry, term: normalizeAcademicTerm(entry.term), points: sanitizeExtraPoints(Number(entry.points)) }))
+    : [];
+  const validBlockIds = new Set<EvaluationBlockId>(EVALUATION_BLOCKS.map((block) => block.id));
+  const evaluationComponents: EvaluationComponent[] = Array.isArray(parsedData.evaluationComponents)
+    ? parsedData.evaluationComponents
+        .filter((component) =>
+          typeof component.id === "string" &&
+          typeof component.turmaId === "string" &&
+          typeof component.name === "string" &&
+          validBlockIds.has(component.blockId),
+        )
+        .map((component) => ({
+          ...component,
+          term: normalizeAcademicTerm(component.term),
+          maxPoints: component.maxPoints === null
+            ? null
+            : Number.isFinite(Number(component.maxPoints)) ? Math.max(0, Number(component.maxPoints)) : 0,
+          kind: component.kind === "activities" ? "activities" : "manual",
+          order: Number.isFinite(Number(component.order)) ? Number(component.order) : 0,
+        }))
+    : [];
+  const componentScores: StudentComponentScore[] = Array.isArray(parsedData.componentScores)
+    ? parsedData.componentScores
+        .filter((score) => typeof score.studentId === "string" && typeof score.componentId === "string" && Number.isFinite(Number(score.score)))
+        .map((score) => ({ ...score, score: sanitizeExtraPoints(Number(score.score)) }))
+    : [];
+
+  const components = [...evaluationComponents];
+  const migratedScores = [...componentScores];
+  const migratingLegacyData = schemaVersion < 2;
+  const componentExists = (turmaId: string, term: AcademicTerm, blockId: EvaluationBlockId) =>
+    components.some((component) => component.turmaId === turmaId && component.term === term && component.blockId === blockId);
+
+  for (const turma of turmas) {
+    for (const term of ACADEMIC_TERMS) {
+      const legacySetting = termSettings.find((setting) => setting.turmaId === turma.id && setting.term === term);
+      const hasLegacyActivities = activities.some((activity) => activity.turmaId === turma.id && activity.term === term);
+      const legacyActivityMaximum = legacySetting
+        ? Math.min(20, legacySetting.totalPoints)
+        : hasLegacyActivities ? 0 : 10;
+
+      if (!componentExists(turma.id, term, "AEP")) {
+        const activityId = evaluationComponentId(turma.id, term, "AEP", "activities");
+        components.push({
+          id: activityId,
+          turmaId: turma.id,
+          term,
+          blockId: "AEP",
+          name: "Atividades",
+          maxPoints: legacyActivityMaximum,
+          kind: "activities",
+          order: 0,
+        });
+        const remainingPoints = Math.max(0, 20 - legacyActivityMaximum);
+        if (remainingPoints > 0) {
+          components.push({
+            id: evaluationComponentId(turma.id, term, "AEP", "feira"),
+            turmaId: turma.id,
+            term,
+            blockId: "AEP",
+            name: "Feira",
+            maxPoints: remainingPoints,
+            kind: "manual",
+            order: 1,
+          });
+        }
+      }
+
+      for (const block of EVALUATION_BLOCKS) {
+        if (componentExists(turma.id, term, block.id)) continue;
+        const id = evaluationComponentId(turma.id, term, block.id, "default");
+        components.push({
+          id,
+          turmaId: turma.id,
+          term,
+          blockId: block.id,
+          name: block.id === "PE" ? "Pontos extras" : block.label,
+          maxPoints: block.maxPoints,
+          kind: "manual",
+          order: 0,
+        });
+      }
+
+      if (migratingLegacyData) {
+        const peComponent = components.find((component) => component.turmaId === turma.id && component.term === term && component.blockId === "PE");
+        if (peComponent) {
+          for (const legacyScore of studentExtraPoints) {
+            const student = students.find((item) => item.id === legacyScore.studentId && item.turma === turma.name);
+            if (!student || legacyScore.term !== term) continue;
+            const alreadyMigrated = migratedScores.some((score) => score.studentId === student.id && score.componentId === peComponent.id);
+            if (!alreadyMigrated && legacyScore.points > 0) {
+              migratedScores.push({ studentId: student.id, componentId: peComponent.id, score: legacyScore.points });
+            }
+          }
+        }
+      }
+    }
+  }
 
   return {
     ...parsedData,
-    students: Array.isArray(parsedData.students) ? parsedData.students : [],
-    turmas: Array.isArray(parsedData.turmas) ? parsedData.turmas : [],
-    activities: Array.isArray(parsedData.activities)
-      ? parsedData.activities.map((activity) => ({
-          ...activity,
-          term: normalizeAcademicTerm(activity.term),
-        }))
-      : [],
+    schemaVersion: Math.max(2, schemaVersion),
+    students,
+    turmas,
+    activities,
     activityRecords: Array.isArray(parsedData.activityRecords) ? parsedData.activityRecords : [],
-    studentExtraPoints: Array.isArray(parsedData.studentExtraPoints)
-      ? parsedData.studentExtraPoints
-          .filter((entry) => typeof entry.studentId === "string")
-          .map((entry) => ({ ...entry, term: normalizeAcademicTerm(entry.term), points: sanitizeExtraPoints(Number(entry.points)) }))
-      : [],
-    termSettings: Array.isArray(parsedData.termSettings)
-      ? parsedData.termSettings
-          .filter((setting) => typeof setting.turmaId === "string")
-          .map((setting) => ({
-            ...setting,
-            term: normalizeAcademicTerm(setting.term),
-            totalPoints: Number.isFinite(Number(setting.totalPoints))
-              ? Math.max(0, Number(setting.totalPoints))
-              : 0,
-          }))
-      : [],
+    studentExtraPoints,
+    termSettings,
+    evaluationComponents: components,
+    componentScores: migratedScores,
   };
 }
 

@@ -1,25 +1,21 @@
 import { useState } from "react";
 import { useSchoolData } from "@/hooks/useSchoolData";
 import { StudentRegistration } from "@/components/StudentRegistration";
-import { SummaryTab } from "@/components/SummaryTab";
 import { TurmaTab } from "@/components/TurmaTab";
 import { AcademicTerm } from "@/types";
 import { ACADEMIC_TERMS, getTermLabel } from "@/lib/academicTerms";
-import { GraduationCap, LayoutDashboard, Users } from "lucide-react";
+import { GraduationCap, Users } from "lucide-react";
 
-type TabId = "cadastro" | "resumo" | string; // string = turma id
+type TabId = "cadastro" | string; // string = turma id
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("cadastro");
-  const [summaryInitialTurma, setSummaryInitialTurma] = useState<string | undefined>(undefined);
-  const [turmaInitialDate, setTurmaInitialDate] = useState<string | undefined>(undefined);
   const [selectedTerm, setSelectedTerm] = useState<AcademicTerm>(1);
   const school = useSchoolData();
   const sortedTurmas = [...school.data.turmas].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
   const tabs = [
     { id: "cadastro", label: "Cadastro", icon: <Users size={14} /> },
-    { id: "resumo", label: "Resumo", icon: <LayoutDashboard size={14} /> },
     ...sortedTurmas.map((t) => ({
       id: t.id,
       label: t.name,
@@ -29,16 +25,6 @@ const Index = () => {
   ];
 
   const currentTurma = school.data.turmas.find((t) => t.id === activeTab);
-
-  const handleOpenSummaryFromTurma = (turmaName: string) => {
-    setSummaryInitialTurma(turmaName);
-    setActiveTab("resumo");
-  };
-
-  const handleOpenTurmaFromSummary = (turmaId: string, date?: string) => {
-    setTurmaInitialDate(date);
-    setActiveTab(turmaId);
-  };
 
   return (
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "hsl(var(--background))" }}>
@@ -57,7 +43,7 @@ const Index = () => {
             Diário do Professor
           </h1>
           <p className="text-[10px] sm:text-xs opacity-70 hidden sm:block" style={{ color: "hsl(var(--primary-foreground))" }}>
-            Controle de atividades
+            Notas e atividades
           </p>
         </div>
         <label className="ml-auto flex items-center gap-2 text-xs" style={{ color: "hsl(var(--primary-foreground))" }}>
@@ -120,37 +106,20 @@ const Index = () => {
             removeTurma={school.removeTurma}
           />
         )}
-        {activeTab === "resumo" && (
-          <SummaryTab
-            data={school.data}
-            selectedTerm={selectedTerm}
-            setTermTotalPoints={school.setTermTotalPoints}
-            setStudentExtraPoints={school.setStudentExtraPoints}
-            toggleActivityRecord={school.toggleActivityRecord}
-            getActivityRecordFull={school.getActivityRecordFull}
-            setActivityOnTimeOverride={school.setActivityOnTimeOverride}
-            updateActivity={school.updateActivity}
-            removeActivity={school.removeActivity}
-            initialTurma={summaryInitialTurma}
-            onInitialTurmaConsumed={() => setSummaryInitialTurma(undefined)}
-            onOpenTurma={handleOpenTurmaFromSummary}
-          />
-        )}
         {currentTurma && (
           <TurmaTab
             turma={currentTurma}
-            setStudentExtraPoints={school.setStudentExtraPoints}
             data={school.data}
             selectedTerm={selectedTerm}
             addActivity={school.addActivity}
             removeActivity={school.removeActivity}
+            updateActivity={school.updateActivity}
             toggleActivityRecord={school.toggleActivityRecord}
             getActivityRecord={school.getActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
-            initialDate={turmaInitialDate}
-            onInitialDateConsumed={() => setTurmaInitialDate(undefined)}
-            onOpenSummary={() => handleOpenSummaryFromTurma(currentTurma.name)}
+            setStudentComponentScore={school.setStudentComponentScore}
+            saveEvaluationConfiguration={school.saveEvaluationConfiguration}
           />
         )}
       </main>
