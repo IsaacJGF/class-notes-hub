@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState } from "react";
-import { Download, Settings2, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, Settings2, Plus, Trash2, ChevronDown, Table2, UsersRound, Star, Calculator } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { AcademicTerm, EvaluationBlockId, EvaluationComponent, SchoolData, Turma } from "@/types";
@@ -15,6 +15,7 @@ import {
   roundGrade,
 } from "@/lib/academicTerms";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { matchesAccentAware } from "@/lib/textSearch";
 
 interface Props {
@@ -233,98 +234,208 @@ export function Gradebook({ turma, term, data, searchQuery, setStudentComponentS
     XLSX.writeFile(workbook, `notas_${turma.name}_${term}o_trimestre.xlsx`);
   };
 
-  const tableColumns = componentsByBlock.reduce((count, block) => count + block.components.length + 1, 3);
+  const componentScore = (studentId: string, component: EvaluationComponent) => component.kind === "activities"
+    ? gradesByStudent.get(studentId)?.activitySummary.activityGrade ?? 0
+    : scoreByStudentComponent.get(studentId + ":" + component.id);
+
+  const renderBranchTable = (block: typeof EVALUATION_BLOCKS[number], component: EvaluationComponent) => (
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-4 py-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold">{component.name}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {component.kind === "activities"
+              ? "Nota calculada pelas atividades · máximo de " + formatPoints(component.maxPoints ?? 0) + " pontos"
+              : component.maxPoints === null ? "Sem limite de pontuação" : "Limite de " + formatPoints(component.maxPoints) + " pontos"}
+          </p>
+        </div>
+        {component.kind === "activities" && (
+          <span className="ml-auto rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Calculada automaticamente</span>
+        )}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="school-table min-w-full">
+          <thead><tr>
+            <th className="w-[42%]">Aluno</th>
+            <th className="text-center">{component.kind === "activities" ? "Nota AEP" : "Nota"}</th>
+            {component.kind === "activities" && <>
+              <th className="text-center">Aproveitamento</th>
+              <th className="text-center">No prazo</th>
+              <th className="text-center">Atrasadas</th>
+              <th className="text-center">Pendentes</th>
+            </>}
+          </tr></thead>
+          <tbody>
+            {students.length === 0 ? (
+              <tr><td colSpan={component.kind === "activities" ? 6 : 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+            ) : students.map((student) => {
+              const summary = gradesByStudent.get(student.id)!;
+              const score = componentScore(student.id, component);
+              return <tr key={student.id}>
+                <td className="whitespace-nowrap font-medium">{student.name}</td>
+                <td className="text-center">
+                  {component.kind === "activities" ? (
+                    <span className="inline-flex min-w-20 justify-center rounded-lg bg-primary/10 px-3 py-2 font-bold text-primary">{formatPoints(summary.activitySummary.activityGrade)}</span>
+                  ) : (
+                    <div className="mx-auto flex max-w-40 items-center justify-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={component.maxPoints ?? undefined}
+                        step="0.01"
+                        inputMode="decimal"
+                        aria-label={student.name + " — " + block.label + " — " + component.name}
+                        value={score ?? ""}
+                        placeholder="—"
+                        onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
+                        className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-sm shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                      />
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">{component.maxPoints === null ? "pts" : "/ " + formatPoints(component.maxPoints)}</span>
+                    </div>
+                  )}
+                </td>
+                {component.kind === "activities" && <>
+                  <td className="text-center font-medium">{formatPoints(summary.activitySummary.weightedPercentage)}%</td>
+                  <td className="text-center text-emerald-700">{summary.activitySummary.onTime}</td>
+                  <td className="text-center text-amber-700">{summary.activitySummary.late}</td>
+                  <td className="text-center text-muted-foreground">{summary.activitySummary.pending}</td>
+                </>}
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderBlockDetailSheet = (block: typeof EVALUATION_BLOCKS[number] & { components: EvaluationComponent[] }) => (
+    <details className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Table2 size={17} /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Planilha completa — {block.id === "PE" ? "Pontuação extra (P.E.)" : block.label}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">Recolhida. Expanda para consultar todas as ramificações e o total do bloco.</span>
+        </span>
+        <ChevronDown size={18} className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-border p-3 sm:p-4">
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="school-table min-w-full">
+            <thead><tr>
+              <th>Aluno</th>
+              {block.components.map((component) => <th key={component.id} className="text-center">
+                <span className="block">{component.name}</span>
+                <span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{component.kind === "activities" ? "calculada" : component.maxPoints === null ? "sem limite" : "até " + formatPoints(component.maxPoints) + " pts"}</span>
+              </th>)}
+              <th className="text-center">Total {block.label}</th>
+            </tr></thead>
+            <tbody>{students.length === 0 ? (
+              <tr><td colSpan={block.components.length + 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+            ) : students.map((student) => <tr key={student.id}>
+              <td className="whitespace-nowrap font-medium">{student.name}</td>
+              {block.components.map((component) => {
+                const score = componentScore(student.id, component);
+                return <td key={component.id} className="text-center">{score === undefined ? <span className="text-muted-foreground">—</span> : formatPoints(score)}</td>;
+              })}
+              <td className="text-center font-bold">{formatPoints(gradesByStudent.get(student.id)!.blockTotals[block.id])}{block.maxPoints === null ? "" : " / 20"}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  );
 
   return (
-    <section className="section-card">
-      <div className="section-card-header flex-wrap gap-2">
-        <div>
-          <div className="section-card-title">Planilha de Notas — {turma.name}</div>
-          <div className="mt-1 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-            {getTermLabel(term)} · AEP, AL, AV, AG e Teste somam até 100 pontos; P.E. é somada à parte.
-          </div>
+    <section className="section-card overflow-hidden">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card px-4 py-4 sm:px-5">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><Calculator size={20} /></div>
+        <div className="min-w-0 flex-1">
+          <div className="text-lg font-bold tracking-tight">Notas de {turma.name}</div>
+          <div className="mt-0.5 text-sm text-muted-foreground">{getTermLabel(term)} · cinco avaliações de até 20 pontos e pontuação extra</div>
         </div>
-        <div className="ml-auto flex gap-2">
-          <button onClick={openConfiguration} className="flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <button onClick={openConfiguration} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold shadow-sm transition hover:bg-muted sm:flex-none">
             <Settings2 size={14} /> Configurar divisões
           </button>
-          <button onClick={exportWorkbook} className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold hover:opacity-80" style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}>
+          <button onClick={exportWorkbook} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition hover:opacity-90 sm:flex-none" style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}>
             <Download size={14} /> Exportar Excel
           </button>
         </div>
       </div>
-      <div className="overflow-auto max-h-[70vh]">
-        <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
-          <thead>
-            <tr>
-              <th rowSpan={2} className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "16rem" }}>Aluno</th>
-              {componentsByBlock.map((block) => (
-                <th key={block.id} colSpan={block.components.length + 1} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>
-                  {block.label} {block.maxPoints === null ? "(Pontos Extras)" : "(20 pts)"}
-                </th>
-              ))}
-              <th rowSpan={2} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Nota regular / 100</th>
-              <th rowSpan={2} className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total com P.E.</th>
-            </tr>
-            <tr>
-              {componentsByBlock.map((block) => (
-                <Fragment key={block.id}>
-                  {block.components.map((component) => (
-                    <th key={component.id} className="sticky top-10 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "9rem" }}>
-                      <div>{component.name}</div>
-                      <div className="text-[10px] font-normal opacity-75">{component.kind === "activities" ? `${formatPoints(component.maxPoints ?? 0)} pts · calculada` : component.maxPoints === null ? "sem limite" : `até ${formatPoints(component.maxPoints)} pts`}</div>
-                    </th>
-                  ))}
-                  <th className="sticky top-10 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>Total {block.label}</th>
-                </Fragment>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {students.length === 0 ? (
-              <tr><td colSpan={tableColumns} className="p-8 text-center text-sm">Nenhum aluno nesta turma.</td></tr>
-            ) : students.map((student) => {
-              const summary = gradesByStudent.get(student.id)!;
-              return (
-                <tr key={student.id}>
-                  <td className="sticky left-0 z-10 whitespace-nowrap font-medium" style={{ backgroundColor: "hsl(var(--card))" }}>{student.name}</td>
-                  {componentsByBlock.map((block) => (
-                    <Fragment key={`${student.id}-${block.id}`}>
-                      {block.components.map((component) => {
-                        const score = scoreByStudentComponent.get(`${student.id}:${component.id}`);
-                        return (
-                          <td key={component.id} className="text-center">
-                            {component.kind === "activities" ? (
-                              <span className="font-semibold" title="Calculada pelos registros de atividades">
-                                {formatPoints(summary.activitySummary.activityGrade)}
-                              </span>
-                            ) : (
-                              <input
-                                type="number"
-                                min="0"
-                                max={component.maxPoints ?? undefined}
-                                step="0.01"
-                                inputMode="decimal"
-                                aria-label={`${student.name} — ${block.label} — ${component.name}`}
-                                value={score ?? ""}
-                                placeholder="—"
-                                onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
-                                className="w-24 rounded border border-border bg-background px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                              />
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="text-center font-semibold">{formatPoints(summary.blockTotals[block.id])}</td>
-                    </Fragment>
-                  ))}
-                  <td className="text-center font-bold" style={{ color: "hsl(var(--primary))" }}>{formatPoints(summary.baseTotal)} / 100</td>
-                  <td className="text-center font-bold" style={{ color: "hsl(var(--primary))" }}>{formatPoints(summary.finalTotal)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="p-3 sm:p-5">
+        <Tabs defaultValue="overview" className="space-y-4">
+          <div className="overflow-x-auto pb-1">
+            <TabsList aria-label="Blocos de notas" className="inline-flex h-auto min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1 sm:min-w-0">
+              <TabsTrigger value="overview" className="min-h-10 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm">Geral</TabsTrigger>
+              {componentsByBlock.map((block) => <TabsTrigger key={block.id} value={block.id} className="min-h-10 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm">{block.id === "PE" ? "Pontuação extra" : block.label}</TabsTrigger>)}
+            </TabsList>
+          </div>
+
+          <TabsContent value="overview" className="mt-0 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><Calculator size={18} /></span>
+                <div><p className="text-xs text-muted-foreground">Avaliações regulares</p><p className="text-lg font-bold">5 blocos<span className="ml-1 text-xs font-medium text-muted-foreground">× 20 pts</span></p></div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><Star size={18} /></span>
+                <div><p className="text-xs text-muted-foreground">Pontuação extra</p><p className="text-lg font-bold">Sem teto<span className="ml-1 text-xs font-medium text-muted-foreground">somada à nota</span></p></div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700"><UsersRound size={18} /></span>
+                <div><p className="text-xs text-muted-foreground">Alunos na turma</p><p className="text-lg font-bold">{allStudents.length}</p></div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <div><h3 className="font-semibold">Resumo geral das notas</h3><p className="mt-0.5 text-xs text-muted-foreground">Totais dos seis blocos e nota final de cada estudante.</p></div>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Regular: até 100 pts · P.E.: sem teto</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="school-table min-w-full">
+                  <thead><tr>
+                    <th>Aluno</th>
+                    {componentsByBlock.map((block) => <th key={block.id} className="text-center">{block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span></th>)}
+                    <th className="text-center">Regular<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">/ 100</span></th>
+                    <th className="text-center">Total com P.E.</th>
+                  </tr></thead>
+                  <tbody>{students.length === 0 ? (
+                    <tr><td colSpan={9} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+                  ) : students.map((student) => {
+                    const summary = gradesByStudent.get(student.id)!;
+                    return <tr key={student.id}>
+                      <td className="whitespace-nowrap font-medium">{student.name}</td>
+                      {componentsByBlock.map((block) => <td key={block.id} className="text-center font-medium">{formatPoints(summary.blockTotals[block.id])}</td>)}
+                      <td className="text-center font-bold text-primary">{formatPoints(summary.baseTotal)}</td>
+                      <td className="text-center"><span className="inline-flex min-w-16 justify-center rounded-full bg-primary/10 px-3 py-1 font-bold text-primary">{formatPoints(summary.finalTotal)}</span></td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {componentsByBlock.map((block) => (
+            <TabsContent key={block.id} value={block.id} className="mt-0 space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-border bg-muted/35 px-4 py-3">
+                <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bloco de avaliação</p><h2 className="mt-0.5 text-xl font-bold">{block.id === "PE" ? "Pontuação extra" : block.label}</h2><p className="mt-1 text-sm text-muted-foreground">{block.maxPoints === null ? "Sem limite global" : "Até " + formatPoints(block.maxPoints) + " pontos no bloco"}</p></div>
+                <div className="rounded-lg border border-border bg-card px-3 py-2 text-right shadow-sm"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Subramificações</p><p className="font-bold">{block.components.length}</p></div>
+              </div>
+
+              {renderBlockDetailSheet(block)}
+
+              <Tabs key={block.id + "-" + block.components.map((component) => component.id).join("-")} defaultValue={block.components[0]?.id} className="space-y-3">
+                <div className="overflow-x-auto pb-1">
+                  <TabsList aria-label={"Ramificações de " + block.label} className="inline-flex h-auto min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1 sm:min-w-0">
+                    {block.components.map((component) => <TabsTrigger key={component.id} value={component.id} className="min-h-10 max-w-64 gap-2 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"><span className="truncate">{component.name}</span>{component.kind === "activities" && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">automática</span>}</TabsTrigger>)}
+                  </TabsList>
+                </div>
+                {block.components.map((component) => <TabsContent key={component.id} value={component.id} className="mt-0">{renderBranchTable(block, component)}</TabsContent>)}
+              </Tabs>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
 
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
