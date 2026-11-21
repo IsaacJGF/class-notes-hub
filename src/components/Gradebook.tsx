@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Download, Settings2, Plus, Trash2, ChevronDown, Table2, UsersRound, Star, Calculator } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import type { AcademicTerm, EvaluationBlockId, EvaluationComponent, SchoolData, Turma } from "@/types";
+import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Turma } from "@/types";
 import {
   EVALUATION_BLOCKS,
   FIXED_EVALUATION_BLOCKS,
@@ -13,18 +13,27 @@ import {
   getTermLabel,
   indexActivityRecords,
   roundGrade,
+  type ActivityChanges,
 } from "@/lib/academicTerms";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { matchesAccentAware } from "@/lib/textSearch";
+import { ActivitySummary } from "@/components/ActivitySummary";
 
 interface Props {
   turma: Turma;
   term: AcademicTerm;
   data: SchoolData;
   searchQuery: string;
+  studentSortOrder: "asc" | "desc";
   setStudentComponentScore: (studentId: string, componentId: string, score: number | null) => string | null;
   saveEvaluationConfiguration: (turmaId: string, term: AcademicTerm, components: EvaluationComponent[]) => string | null;
+  addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
+  updateActivity: (id: string, changes: ActivityChanges) => void;
+  removeActivity: (id: string) => void;
+  toggleActivityRecord: (studentId: string, activityId: string) => void;
+  getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
+  setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
 }
 
 type StudentGrades = {
@@ -43,14 +52,31 @@ function orderedComponents(components: EvaluationComponent[]) {
   return [...components].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "pt-BR"));
 }
 
-export function Gradebook({ turma, term, data, searchQuery, setStudentComponentScore, saveEvaluationConfiguration }: Props) {
+export function Gradebook({
+  turma,
+  term,
+  data,
+  searchQuery,
+  studentSortOrder,
+  setStudentComponentScore,
+  saveEvaluationConfiguration,
+  addActivity,
+  updateActivity,
+  removeActivity,
+  toggleActivityRecord,
+  getActivityRecordFull,
+  setActivityOnTimeOverride,
+}: Props) {
   const [configOpen, setConfigOpen] = useState(false);
   const [draftComponents, setDraftComponents] = useState<EvaluationComponent[]>([]);
   const allStudents = useMemo(
     () => data.students
       .filter((student) => student.turma === turma.name)
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })),
-    [data.students, turma.name],
+      .sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+        return studentSortOrder === "asc" ? comparison : -comparison;
+      }),
+    [data.students, turma.name, studentSortOrder],
   );
   const students = useMemo(
     () => searchQuery.trim() ? allStudents.filter((student) => matchesAccentAware(student.name, searchQuery)) : allStudents,
@@ -238,68 +264,60 @@ export function Gradebook({ turma, term, data, searchQuery, setStudentComponentS
     ? gradesByStudent.get(studentId)?.activitySummary.activityGrade ?? 0
     : scoreByStudentComponent.get(studentId + ":" + component.id);
 
-  const renderBranchTable = (block: typeof EVALUATION_BLOCKS[number], component: EvaluationComponent) => (
+  const renderBranchTable = (block: typeof EVALUATION_BLOCKS[number], component: EvaluationComponent) => component.kind === "activities" ? (
+    <ActivitySummary
+      turma={turma}
+      term={term}
+      data={data}
+      students={students}
+      activityMaximum={component.maxPoints ?? 0}
+      addActivity={addActivity}
+      updateActivity={updateActivity}
+      removeActivity={removeActivity}
+      toggleActivityRecord={toggleActivityRecord}
+      getActivityRecordFull={getActivityRecordFull}
+      setActivityOnTimeOverride={setActivityOnTimeOverride}
+    />
+  ) : (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-4 py-3">
         <div className="min-w-0">
           <h3 className="font-semibold">{component.name}</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {component.kind === "activities"
-              ? "Nota calculada pelas atividades · máximo de " + formatPoints(component.maxPoints ?? 0) + " pontos"
-              : component.maxPoints === null ? "Sem limite de pontuação" : "Limite de " + formatPoints(component.maxPoints) + " pontos"}
+            {component.maxPoints === null ? "Sem limite de pontuação" : "Limite de " + formatPoints(component.maxPoints) + " pontos"}
           </p>
         </div>
-        {component.kind === "activities" && (
-          <span className="ml-auto rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Calculada automaticamente</span>
-        )}
       </div>
       <div className="overflow-x-auto">
         <table className="school-table min-w-full">
           <thead><tr>
             <th className="w-[42%]">Aluno</th>
-            <th className="text-center">{component.kind === "activities" ? "Nota AEP" : "Nota"}</th>
-            {component.kind === "activities" && <>
-              <th className="text-center">Aproveitamento</th>
-              <th className="text-center">No prazo</th>
-              <th className="text-center">Atrasadas</th>
-              <th className="text-center">Pendentes</th>
-            </>}
+            <th className="text-center">Nota</th>
           </tr></thead>
           <tbody>
             {students.length === 0 ? (
-              <tr><td colSpan={component.kind === "activities" ? 6 : 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+              <tr><td colSpan={2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
             ) : students.map((student) => {
-              const summary = gradesByStudent.get(student.id)!;
               const score = componentScore(student.id, component);
               return <tr key={student.id}>
                 <td className="whitespace-nowrap font-medium">{student.name}</td>
                 <td className="text-center">
-                  {component.kind === "activities" ? (
-                    <span className="inline-flex min-w-20 justify-center rounded-lg bg-primary/10 px-3 py-2 font-bold text-primary">{formatPoints(summary.activitySummary.activityGrade)}</span>
-                  ) : (
-                    <div className="mx-auto flex max-w-40 items-center justify-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max={component.maxPoints ?? undefined}
-                        step="0.01"
-                        inputMode="decimal"
-                        aria-label={student.name + " — " + block.label + " — " + component.name}
-                        value={score ?? ""}
-                        placeholder="—"
-                        onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
-                        className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-sm shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
-                      />
-                      <span className="whitespace-nowrap text-xs text-muted-foreground">{component.maxPoints === null ? "pts" : "/ " + formatPoints(component.maxPoints)}</span>
-                    </div>
-                  )}
+                  <div className="mx-auto flex max-w-40 items-center justify-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={component.maxPoints ?? undefined}
+                      step="0.01"
+                      inputMode="decimal"
+                      aria-label={student.name + " — " + block.label + " — " + component.name}
+                      value={score ?? ""}
+                      placeholder="—"
+                      onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
+                      className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-sm shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                    />
+                    <span className="whitespace-nowrap text-xs text-muted-foreground">{component.maxPoints === null ? "pts" : "/ " + formatPoints(component.maxPoints)}</span>
+                  </div>
                 </td>
-                {component.kind === "activities" && <>
-                  <td className="text-center font-medium">{formatPoints(summary.activitySummary.weightedPercentage)}%</td>
-                  <td className="text-center text-emerald-700">{summary.activitySummary.onTime}</td>
-                  <td className="text-center text-amber-700">{summary.activitySummary.late}</td>
-                  <td className="text-center text-muted-foreground">{summary.activitySummary.pending}</td>
-                </>}
               </tr>;
             })}
           </tbody>
