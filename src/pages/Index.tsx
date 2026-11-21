@@ -102,6 +102,7 @@ const Index = () => {
             data={school.data}
             addStudent={school.addStudent}
             removeStudent={school.removeStudent}
+            transferStudent={school.transferStudent}
             addTurma={school.addTurma}
             removeTurma={school.removeTurma}
           />
@@ -111,6 +112,9 @@ const Index = () => {
             turma={currentTurma}
             data={school.data}
             selectedTerm={selectedTerm}
+            addStudent={school.addStudent}
+            removeStudent={school.removeStudent}
+            transferStudent={school.transferStudent}
             addActivity={school.addActivity}
             removeActivity={school.removeActivity}
             updateActivity={school.updateActivity}
