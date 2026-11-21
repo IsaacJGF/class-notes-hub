@@ -424,9 +424,30 @@ export function Gradebook({
                     const summary = gradesByStudent.get(student.id)!;
                     return <tr key={student.id}>
                       <td className="whitespace-nowrap font-medium">{student.name}</td>
-                      {componentsByBlock.map((block) => <td key={block.id} className="text-center font-medium">{formatPoints(summary.blockTotals[block.id])}</td>)}
-                      <td className="text-center font-bold text-primary">{formatPoints(summary.baseTotal)}</td>
-                      <td className="text-center"><span className="inline-flex min-w-16 justify-center rounded-full bg-primary/10 px-3 py-1 font-bold text-primary">{formatPoints(summary.finalTotal)}</span></td>
+                      {componentsByBlock.map((block) => {
+                        const belowAverage = block.id !== "PE" && summary.blockTotals[block.id] < 14;
+                        return <td
+                          key={block.id}
+                          className={`text-center font-medium ${belowAverage ? "bg-destructive/10 font-semibold text-destructive" : ""}`}
+                          title={belowAverage ? "Abaixo da média de 14 pontos neste bloco" : undefined}
+                        >
+                          {formatPoints(summary.blockTotals[block.id])}
+                        </td>;
+                      })}
+                      <td
+                        className={`text-center font-bold ${summary.baseTotal < 70 ? "bg-destructive/10 text-destructive" : "text-primary"}`}
+                        title={summary.baseTotal < 70 ? "Nota regular abaixo de 70 pontos" : undefined}
+                      >
+                        {formatPoints(summary.baseTotal)}
+                      </td>
+                      <td className="text-center">
+                        <span
+                          className={`inline-flex min-w-16 justify-center rounded-full px-3 py-1 font-bold ${summary.finalTotal < 70 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
+                          title={summary.finalTotal < 70 ? "Total com pontuação extra abaixo de 70 pontos" : undefined}
+                        >
+                          {formatPoints(summary.finalTotal)}
+                        </span>
+                      </td>
                     </tr>;
                   })}</tbody>
                 </table>
