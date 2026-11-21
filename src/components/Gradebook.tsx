@@ -5,8 +5,6 @@ import { toast } from "sonner";
 import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Turma } from "@/types";
 import {
   EVALUATION_BLOCKS,
-  FIXED_EVALUATION_BLOCKS,
-  formatActivityExportResult,
   formatPoints,
   getStudentTermSummary,
   getTermActivities,
@@ -39,8 +37,6 @@ interface Props {
 type StudentGrades = {
   blockTotals: Record<EvaluationBlockId, number>;
   activitySummary: ReturnType<typeof getStudentTermSummary>;
-  baseTotal: number;
-  extraTotal: number;
   finalTotal: number;
 };
 
@@ -112,14 +108,11 @@ export function Gradebook({
           : scoreByStudentComponent.get(`${student.id}:${component.id}`) ?? 0;
         blockTotals[component.blockId] += value;
       }
-      const baseTotal = roundGrade(FIXED_EVALUATION_BLOCKS.reduce((sum, blockId) => sum + blockTotals[blockId], 0));
-      const extraTotal = roundGrade(blockTotals.PE);
+      const finalTotal = roundGrade(EVALUATION_BLOCKS.reduce((sum, block) => sum + blockTotals[block.id], 0));
       result.set(student.id, {
         blockTotals,
         activitySummary,
-        baseTotal,
-        extraTotal,
-        finalTotal: roundGrade(baseTotal + extraTotal),
+        finalTotal,
       });
     }
     return result;
@@ -205,58 +198,28 @@ export function Gradebook({
   };
 
   const exportWorkbook = () => {
-    const gradeHeaders: (string | number)[] = ["Aluno", "Turma", "Trimestre"];
-    for (const block of componentsByBlock) {
-      for (const component of block.components) {
-        gradeHeaders.push(`${block.label} — ${component.name} (${component.maxPoints === null ? "sem limite" : `${formatPoints(component.maxPoints)} pts`})`);
-      }
-      gradeHeaders.push(`Total ${block.label}${block.maxPoints === null ? "" : " / 20"}`);
-    }
-    gradeHeaders.push("Nota regular / 100", "Total final com P.E.");
+    const gradeHeaders = [
+      "Aluno",
+      ...componentsByBlock.map((block) => block.id === "PE" ? "Pontuação extra" : block.label),
+      "Nota final",
+    ];
     const gradeRows = allStudents.map((student) => {
       const summary = gradesByStudent.get(student.id)!;
-      const row: (string | number)[] = [student.name, turma.name, getTermLabel(term)];
-      for (const block of componentsByBlock) {
-        for (const component of block.components) {
-          const value = component.kind === "activities"
-            ? summary.activitySummary.activityGrade
-            : scoreByStudentComponent.get(`${student.id}:${component.id}`);
-          row.push(value === undefined ? "" : roundGrade(value));
-        }
-        row.push(roundGrade(summary.blockTotals[block.id]));
-      }
-      row.push(summary.baseTotal, summary.finalTotal);
-      return row;
-    });
-    const gradeSheet = XLSX.utils.aoa_to_sheet([[`Notas da turma ${turma.name} — ${getTermLabel(term)}`], [], gradeHeaders, ...gradeRows]);
-    gradeSheet["!cols"] = gradeHeaders.map((header, index) => {
-      const maxLength = Math.max(String(header).length, ...gradeRows.map((row) => String(row[index] ?? "").length));
-      return { wch: Math.min(36, Math.max(index === 0 ? 28 : 14, maxLength + 2)) };
-    });
-
-    const activityHeaders = ["Aluno", "Turma", "No prazo", "Atrasadas (70%)", "Pendentes", "Aproveitamento (%)", "Nota AEP — Atividades", "Máximo", ...activities.map((activity) => `${activity.date} — ${activity.name}${activity.deadline ? ` (prazo ${activity.deadline})` : ""}`)];
-    const activityRows = allStudents.map((student) => {
-      const summary = gradesByStudent.get(student.id)!.activitySummary;
       return [
         student.name,
-        turma.name,
-        summary.onTime,
-        summary.late,
-        summary.pending,
-        summary.weightedPercentage,
-        summary.activityGrade,
-        summary.totalPoints,
-        ...activities.map((activity) => formatActivityExportResult(
-          activity,
-          recordIndex.get(`${student.id}:${activity.id}`),
-          summary.activityValue,
-        )),
+        ...componentsByBlock.map((block) => roundGrade(summary.blockTotals[block.id])),
+        roundGrade(summary.finalTotal),
       ];
     });
-    const activitySheet = XLSX.utils.aoa_to_sheet([[`Atividades AEP — ${turma.name} — ${getTermLabel(term)}`], [], activityHeaders, ...activityRows]);
+    const gradeSheet = XLSX.utils.aoa_to_sheet([gradeHeaders, ...gradeRows]);
+    gradeSheet["!cols"] = [
+      { wch: 32 },
+      ...componentsByBlock.map((block) => ({ wch: block.id === "PE" ? 18 : 12 })),
+      { wch: 14 },
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, gradeSheet, "Notas");
-    XLSX.utils.book_append_sheet(workbook, activitySheet, "Atividades AEP");
     XLSX.writeFile(workbook, `notas_${turma.name}_${term}o_trimestre.xlsx`);
   };
 
@@ -399,11 +362,10 @@ export function Gradebook({
                   <thead><tr>
                     <th>Aluno</th>
                     {componentsByBlock.map((block) => <th key={block.id} className="text-center">{block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span></th>)}
-                    <th className="text-center">Regular<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">/ 100</span></th>
-                    <th className="text-center">Total com P.E.</th>
+                    <th className="text-center">Nota final</th>
                   </tr></thead>
                   <tbody>{students.length === 0 ? (
-                    <tr><td colSpan={9} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+                    <tr><td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
                   ) : students.map((student) => {
                     const summary = gradesByStudent.get(student.id)!;
                     return <tr key={student.id}>
@@ -418,16 +380,10 @@ export function Gradebook({
                           {formatPoints(summary.blockTotals[block.id])}
                         </td>;
                       })}
-                      <td
-                        className={`text-center font-bold ${summary.baseTotal < 70 ? "bg-destructive/10 text-destructive" : "text-primary"}`}
-                        title={summary.baseTotal < 70 ? "Nota regular abaixo de 70 pontos" : undefined}
-                      >
-                        {formatPoints(summary.baseTotal)}
-                      </td>
                       <td className="text-center">
                         <span
                           className={`inline-flex min-w-16 justify-center rounded-full px-3 py-1 font-bold ${summary.finalTotal < 70 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
-                          title={summary.finalTotal < 70 ? "Total com pontuação extra abaixo de 70 pontos" : undefined}
+                          title={summary.finalTotal < 70 ? "Nota final abaixo da média de 70 pontos" : undefined}
                         >
                           {formatPoints(summary.finalTotal)}
                         </span>
