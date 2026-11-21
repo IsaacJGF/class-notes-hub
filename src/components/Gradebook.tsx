@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, MoreHorizontal, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Student, Turma } from "@/types";
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { matchesAccentAware } from "@/lib/textSearch";
 import { ActivitySummary } from "@/components/ActivitySummary";
 import { TransferStudentDialog } from "@/components/TransferStudentDialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Props {
   turma: Turma;
@@ -408,10 +409,9 @@ export function Gradebook({
                     <th>Aluno</th>
                     {componentsByBlock.map((block) => <th key={block.id} className="text-center">{block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span></th>)}
                     <th className="text-center">Nota final</th>
-                    <th className="text-center">Ações</th>
                   </tr></thead>
                   <tbody>{students.length === 0 ? (
-                    <tr><td colSpan={9} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+                    <tr><td colSpan={componentsByBlock.length + 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
                   ) : students.map((student) => {
                     const summary = gradesByStudent.get(student.id)!;
                     const history = historyByStudent.get(student.id) ?? [];
@@ -427,8 +427,39 @@ export function Gradebook({
                       <Fragment key={student.id}>
                         <tr>
                           <td className="min-w-[220px] font-medium">
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <span className="whitespace-nowrap">{student.name}</span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="rounded-md p-1 text-muted-foreground opacity-60 transition hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:opacity-100"
+                                    title={`Ações de ${student.name}`}
+                                    aria-label={`Ações de ${student.name}`}
+                                  >
+                                    <MoreHorizontal size={16} />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48">
+                                  <DropdownMenuItem
+                                    disabled={data.turmas.length < 2}
+                                    onSelect={() => setStudentToTransfer(student)}
+                                  >
+                                    <ArrowLeftRight size={14} className="mr-2" />Transferir para outra turma
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onSelect={() => {
+                                      const activityCount = data.activityRecords.filter((record) => record.studentId === student.id).length;
+                                      const scoreCount = data.componentScores.filter((score) => score.studentId === student.id).length;
+                                      if (window.confirm(`Excluir ${student.name}? Serão apagados ${activityCount} registro(s) de atividade e ${scoreCount} nota(s), incluindo o histórico. Essa ação não pode ser desfeita.`)) removeStudent(student.id);
+                                    }}
+                                  >
+                                    <Trash2 size={14} className="mr-2" />Excluir aluno
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                               {history.length > 0 && (
                                 <button
                                   onClick={() => setExpandedHistoryStudentId(historyExpanded ? null : student.id)}
@@ -460,35 +491,10 @@ export function Gradebook({
                               {formatPoints(summary.finalTotal)}
                             </span>
                           </td>
-                          <td className="text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => setStudentToTransfer(student)}
-                                disabled={data.turmas.length < 2}
-                                className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-                                title="Transferir para outra turma"
-                                aria-label={`Transferir ${student.name} para outra turma`}
-                              >
-                                <ArrowLeftRight size={15} />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const activityCount = data.activityRecords.filter((record) => record.studentId === student.id).length;
-                                  const scoreCount = data.componentScores.filter((score) => score.studentId === student.id).length;
-                                  if (window.confirm(`Excluir ${student.name}? Serão apagados ${activityCount} registro(s) de atividade e ${scoreCount} nota(s), incluindo o histórico. Essa ação não pode ser desfeita.`)) removeStudent(student.id);
-                                }}
-                                className="rounded p-1.5 text-destructive transition-colors hover:bg-destructive/10"
-                                title="Excluir aluno e seus registros"
-                                aria-label={`Excluir ${student.name}`}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </td>
                         </tr>
                         {historyExpanded && (
                           <tr>
-                            <td colSpan={9} className="bg-muted/20 p-3 sm:p-4">
+                            <td colSpan={componentsByBlock.length + 2} className="bg-muted/20 p-3 sm:p-4">
                               <div className="space-y-4 rounded-lg border border-border bg-card p-3 sm:p-4">
                                 <div>
                                   <p className="text-sm font-semibold">Histórico de atividades de {student.name}</p>

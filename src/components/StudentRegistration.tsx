@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { SchoolData, Student, Turma } from "@/types";
-import { ArrowLeftRight, BookOpen, GraduationCap, Search, Trash2, Upload, UserPlus } from "lucide-react";
+import { ArrowLeftRight, BookOpen, GraduationCap, MoreHorizontal, Search, Trash2, Upload, UserPlus } from "lucide-react";
 import { CsvImportModal } from "@/components/CsvImportModal";
 import { TransferStudentDialog } from "@/components/TransferStudentDialog";
 import { matchesAccentAware } from "@/lib/textSearch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Props {
   data: SchoolData;
@@ -246,7 +247,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
           ) : (
             <table className="school-table min-w-full">
               <thead>
-                <tr><th>#</th><th>Nome do aluno</th><th>Turma</th><th>Cadastrado em</th><th className="text-center">Ações</th></tr>
+                <tr><th>#</th><th>Nome do aluno</th><th>Turma</th><th>Cadastrado em</th></tr>
               </thead>
               <tbody>
                 {(() => {
@@ -254,7 +255,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
                   return studentGroups.map((group) => (
                     <Fragment key={group.turma}>
                       <tr className="bg-muted/60">
-                        <td colSpan={5} className="py-2 text-xs font-bold uppercase tracking-wide text-primary">
+                        <td colSpan={4} className="py-2 text-xs font-bold uppercase tracking-wide text-primary">
                           {group.turma}<span className="ml-2 font-normal normal-case text-muted-foreground">{group.students.length} aluno(s)</span>
                         </td>
                       </tr>
@@ -263,34 +264,44 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
                         return (
                           <tr key={student.id}>
                             <td className="text-xs text-muted-foreground">{rowNumber}</td>
-                            <td className="whitespace-nowrap font-medium">{student.name}</td>
+                            <td className="whitespace-nowrap font-medium">
+                              <div className="flex items-center gap-1.5">
+                                <span>{student.name}</span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="rounded-md p-1 text-muted-foreground opacity-60 transition hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:opacity-100"
+                                      title={`Ações de ${student.name}`}
+                                      aria-label={`Ações de ${student.name}`}
+                                    >
+                                      <MoreHorizontal size={16} />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="w-48">
+                                    <DropdownMenuItem
+                                      disabled={data.turmas.length < 2}
+                                      onSelect={() => setStudentToTransfer(student)}
+                                    >
+                                      <ArrowLeftRight size={14} className="mr-2" />Transferir para outra turma
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onSelect={() => handleRemoveStudent(student)}
+                                    >
+                                      <Trash2 size={14} className="mr-2" />Excluir aluno
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </td>
                             <td>
                               <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}>
                                 {student.turma}
                               </span>
                             </td>
                             <td className="text-xs text-muted-foreground">{new Date(student.createdAt).toLocaleDateString("pt-BR")}</td>
-                            <td>
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  onClick={() => setStudentToTransfer(student)}
-                                  disabled={data.turmas.length < 2}
-                                  className="rounded p-1.5 text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-                                  title="Transferir para outra turma"
-                                  aria-label={`Transferir ${student.name} para outra turma`}
-                                >
-                                  <ArrowLeftRight size={15} />
-                                </button>
-                                <button
-                                  onClick={() => handleRemoveStudent(student)}
-                                  className="rounded p-1.5 text-destructive transition-colors hover:bg-destructive/10"
-                                  title="Excluir aluno e seus registros"
-                                  aria-label={`Excluir ${student.name}`}
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </div>
-                            </td>
                           </tr>
                         );
                       })}
