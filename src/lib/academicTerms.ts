@@ -101,6 +101,7 @@ export function normalizeSchoolData(rawData: unknown): SchoolData {
   const components = [...evaluationComponents];
   const migratedScores = [...componentScores];
   const migratingLegacyData = schemaVersion < 2;
+  const repairingActivityMaximum = schemaVersion < 3;
   const componentExists = (turmaId: string, term: AcademicTerm, blockId: EvaluationBlockId) =>
     components.some((component) => component.turmaId === turmaId && component.term === term && component.blockId === blockId);
 
@@ -110,7 +111,7 @@ export function normalizeSchoolData(rawData: unknown): SchoolData {
       const hasLegacyActivities = activities.some((activity) => activity.turmaId === turma.id && activity.term === term);
       const legacyActivityMaximum = legacySetting
         ? Math.min(20, legacySetting.totalPoints)
-        : hasLegacyActivities ? 0 : 10;
+        : 10;
 
       if (!componentExists(turma.id, term, "AEP")) {
         const activityId = evaluationComponentId(turma.id, term, "AEP", "activities");
@@ -136,6 +137,24 @@ export function normalizeSchoolData(rawData: unknown): SchoolData {
             kind: "manual",
             order: 1,
           });
+        }
+      }
+
+      if (repairingActivityMaximum && hasLegacyActivities) {
+        const aepComponents = components.filter((component) => component.turmaId === turma.id && component.term === term && component.blockId === "AEP");
+        const activityComponent = aepComponents.find((component) => component.kind === "activities");
+        const feiraComponent = aepComponents.find((component) => component.id === evaluationComponentId(turma.id, term, "AEP", "feira"));
+        const isUneditedDefaultSplit = aepComponents.length === 2 &&
+          activityComponent?.id === evaluationComponentId(turma.id, term, "AEP", "activities") &&
+          activityComponent.maxPoints === 0 &&
+          feiraComponent?.kind === "manual" &&
+          feiraComponent.maxPoints === 20;
+
+        if (isUneditedDefaultSplit && activityComponent && feiraComponent && (!legacySetting || legacySetting.totalPoints > 0)) {
+          const maximum = legacySetting ? Math.min(20, legacySetting.totalPoints) : 10;
+          activityComponent.maxPoints = maximum;
+          feiraComponent.maxPoints = 20 - maximum;
+          if (!legacySetting) termSettings.push({ turmaId: turma.id, term, totalPoints: maximum });
         }
       }
 
@@ -172,7 +191,7 @@ export function normalizeSchoolData(rawData: unknown): SchoolData {
 
   return {
     ...parsedData,
-    schemaVersion: Math.max(2, schemaVersion),
+    schemaVersion: Math.max(3, schemaVersion),
     students,
     turmas,
     activities,

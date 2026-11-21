@@ -13,7 +13,7 @@ import {
 const STORAGE_KEY = "school_control_data";
 
 const defaultData: SchoolData = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   students: [],
   turmas: [],
   activities: [],

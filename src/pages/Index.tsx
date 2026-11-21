@@ -115,7 +115,6 @@ const Index = () => {
             removeActivity={school.removeActivity}
             updateActivity={school.updateActivity}
             toggleActivityRecord={school.toggleActivityRecord}
-            getActivityRecord={school.getActivityRecord}
             getActivityRecordFull={school.getActivityRecordFull}
             setActivityOnTimeOverride={school.setActivityOnTimeOverride}
             setStudentComponentScore={school.setStudentComponentScore}

@@ -12,6 +12,7 @@ import {
   isActivityLate,
   normalizeAcademicTerm,
   normalizeSchoolData,
+  evaluationComponentId,
   updateActivityDetails,
   getStudentExtraPoints,
   updateStudentExtraPoints,
@@ -64,6 +65,59 @@ test("migra atividades existentes para o primeiro trimestre sem descartar dados 
   assert.deepEqual(migrated.termSettings, []);
   assert.deepEqual(migrated.attendanceRecords, legacyData.attendanceRecords);
   assert.deepEqual(migrated.classRecords, legacyData.classRecords);
+});
+
+test("repara a divisão antiga do AEP que deixou Atividades com máximo zero", () => {
+  const activities = Array.from({ length: 6 }, (_, index) => activity(String(index + 1)));
+  const migrated = normalizeSchoolData({
+    schemaVersion: 2,
+    students: [{ id: "ana", name: "Ana", turma: "3A" }],
+    turmas: [{ id: "3A", name: "3A" }],
+    activities,
+    activityRecords: [record("1"), record("2")],
+    evaluationComponents: [
+      {
+        id: evaluationComponentId("3A", 1, "AEP", "activities"),
+        turmaId: "3A", term: 1, blockId: "AEP", name: "Atividades", maxPoints: 0, kind: "activities", order: 0,
+      },
+      {
+        id: evaluationComponentId("3A", 1, "AEP", "feira"),
+        turmaId: "3A", term: 1, blockId: "AEP", name: "Feira", maxPoints: 20, kind: "manual", order: 1,
+      },
+    ],
+  });
+
+  const activityComponent = migrated.evaluationComponents.find((component) => component.id === evaluationComponentId("3A", 1, "AEP", "activities"));
+  const feiraComponent = migrated.evaluationComponents.find((component) => component.id === evaluationComponentId("3A", 1, "AEP", "feira"));
+  const summary = getStudentTermSummary(
+    "ana",
+    getTermActivities(migrated.activities, "3A", 1),
+    indexActivityRecords(migrated.activityRecords),
+    activityComponent.maxPoints,
+  );
+
+  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(activityComponent.maxPoints, 10);
+  assert.equal(feiraComponent.maxPoints, 10);
+  assert.deepEqual(migrated.termSettings, [{ turmaId: "3A", term: 1, totalPoints: 10 }]);
+  assert.equal(summary.onTime, 2);
+  assert.equal(summary.pending, 4);
+  assert.equal(summary.activityGrade, 3.33);
+});
+
+test("reproduz a nota 6,73 do resumo antigo com 8 no prazo, 3 atrasos e 4 pendentes", () => {
+  const activities = Array.from({ length: 15 }, (_, index) => activity(String(index + 1)));
+  const records = indexActivityRecords([
+    ...activities.slice(0, 8).map((item) => record(item.id)),
+    ...activities.slice(8, 11).map((item) => record(item.id, { markedAt: "2026-03-15" })),
+  ]);
+  const summary = getStudentTermSummary("ana", activities, records, 10);
+
+  assert.equal(summary.onTime, 8);
+  assert.equal(summary.late, 3);
+  assert.equal(summary.pending, 4);
+  assert.equal(summary.weightedPercentage, 67.33);
+  assert.equal(summary.activityGrade, 6.73);
 });
 
 test("renomeia a atividade sem alterar suas datas, o trimestre ou os registros", () => {
