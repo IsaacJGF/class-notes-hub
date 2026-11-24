@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, MoreHorizontal, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
@@ -53,6 +53,14 @@ type HistoricalActivity = {
   turmaName: string;
 };
 
+type SpreadsheetSelection = {
+  gridId: string;
+  anchorRow: number;
+  anchorColumn: number;
+  focusRow: number;
+  focusColumn: number;
+};
+
 function formatHistoryDate(value?: string): string {
   if (!value) return "—";
   const date = new Date(`${value}T00:00:00`);
@@ -65,6 +73,19 @@ function makeId() {
 
 function orderedComponents(components: EvaluationComponent[]) {
   return [...components].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "pt-BR"));
+}
+
+function parseSpreadsheetScore(value: string): { valid: true; score: number | null } | { valid: false } {
+  const normalized = value.trim().replace(/\s/g, "").replace(",", ".");
+  if (!normalized) return { valid: true, score: null };
+  const score = Number(normalized);
+  return Number.isFinite(score) ? { valid: true, score } : { valid: false };
+}
+
+function parseClipboardMatrix(value: string): string[][] {
+  const rows = value.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  if (rows.length > 1 && rows[rows.length - 1] === "") rows.pop();
+  return rows.map((row) => row.split("\t"));
 }
 
 export function Gradebook({
@@ -88,6 +109,187 @@ export function Gradebook({
   const [draftComponents, setDraftComponents] = useState<EvaluationComponent[]>([]);
   const [expandedHistoryStudentId, setExpandedHistoryStudentId] = useState<string | null>(null);
   const [studentToTransfer, setStudentToTransfer] = useState<Student | null>(null);
+  const [spreadsheetSelection, setSpreadsheetSelectionState] = useState<SpreadsheetSelection | null>(null);
+  const spreadsheetSelectionRef = useRef<SpreadsheetSelection | null>(null);
+  const spreadsheetDragging = useRef(false);
+  const gradebookRef = useRef<HTMLElement | null>(null);
+
+  const updateSpreadsheetSelection = (selection: SpreadsheetSelection | null) => {
+    spreadsheetSelectionRef.current = selection;
+    setSpreadsheetSelectionState(selection);
+  };
+
+  useEffect(() => {
+    const stopSelecting = () => { spreadsheetDragging.current = false; };
+    window.addEventListener("mouseup", stopSelecting);
+    return () => window.removeEventListener("mouseup", stopSelecting);
+  }, []);
+
+  const spreadsheetCellAttributes = (gridId: string, row: number, column: number, value: string) => ({
+    "data-spreadsheet-cell": "true",
+    "data-spreadsheet-grid": gridId,
+    "data-spreadsheet-row": row,
+    "data-spreadsheet-column": column,
+    "data-spreadsheet-value": value,
+    tabIndex: -1,
+  });
+
+  const isSpreadsheetCellSelected = (gridId: string, row: number, column: number) => {
+    const selection = spreadsheetSelection;
+    if (!selection || selection.gridId !== gridId) return false;
+    const minRow = Math.min(selection.anchorRow, selection.focusRow);
+    const maxRow = Math.max(selection.anchorRow, selection.focusRow);
+    const minColumn = Math.min(selection.anchorColumn, selection.focusColumn);
+    const maxColumn = Math.max(selection.anchorColumn, selection.focusColumn);
+    return row >= minRow && row <= maxRow && column >= minColumn && column <= maxColumn;
+  };
+
+  const handleSpreadsheetMouseDown = (event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest("button, a, [role='menuitem']")) return;
+    const cell = target?.closest<HTMLElement>("[data-spreadsheet-cell]");
+    if (!cell || event.button !== 0) return;
+    const gridId = cell.dataset.spreadsheetGrid;
+    const row = Number(cell.dataset.spreadsheetRow);
+    const column = Number(cell.dataset.spreadsheetColumn);
+    if (!gridId || !Number.isFinite(row) || !Number.isFinite(column)) return;
+
+    const previous = spreadsheetSelectionRef.current;
+    const anchorRow = event.shiftKey && previous?.gridId === gridId ? previous.anchorRow : row;
+    const anchorColumn = event.shiftKey && previous?.gridId === gridId ? previous.anchorColumn : column;
+    updateSpreadsheetSelection({ gridId, anchorRow, anchorColumn, focusRow: row, focusColumn: column });
+    spreadsheetDragging.current = true;
+    if (!target?.closest("input[data-spreadsheet-input]")) {
+      event.preventDefault();
+      cell.focus();
+    }
+  };
+
+  const handleSpreadsheetMouseOver = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!spreadsheetDragging.current) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const cell = target?.closest<HTMLElement>("[data-spreadsheet-cell]");
+    const selection = spreadsheetSelectionRef.current;
+    if (!cell || !selection || cell.dataset.spreadsheetGrid !== selection.gridId) return;
+    const row = Number(cell.dataset.spreadsheetRow);
+    const column = Number(cell.dataset.spreadsheetColumn);
+    if (!Number.isFinite(row) || !Number.isFinite(column)) return;
+    if (row === selection.focusRow && column === selection.focusColumn) return;
+    updateSpreadsheetSelection({ ...selection, focusRow: row, focusColumn: column });
+  };
+
+  const handleSpreadsheetColumnClick = (event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const header = target?.closest<HTMLElement>("[data-spreadsheet-column-header]");
+    if (!header) return;
+    const gridId = header.dataset.spreadsheetGrid;
+    const column = Number(header.dataset.spreadsheetColumn);
+    const rowCount = Number(header.dataset.spreadsheetRowCount);
+    if (!gridId || !Number.isFinite(column) || !Number.isFinite(rowCount) || rowCount < 1) return;
+    updateSpreadsheetSelection({ gridId, anchorRow: 0, anchorColumn: column, focusRow: rowCount - 1, focusColumn: column });
+  };
+
+  const handleSpreadsheetCopy = (event: ReactClipboardEvent<HTMLElement>) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const selection = spreadsheetSelectionRef.current;
+    if (target?.closest("button:not([data-spreadsheet-column-header]), a, [role='menuitem']")) return;
+    if (!selection || !target?.closest("[data-spreadsheet-cell], [data-spreadsheet-column-header]")) return;
+
+    const input = target.closest<HTMLInputElement>("input[data-spreadsheet-input]");
+    const isSingleCell = selection.anchorRow === selection.focusRow && selection.anchorColumn === selection.focusColumn;
+    if (input && isSingleCell && input.selectionStart !== null && input.selectionEnd !== null && input.selectionStart !== input.selectionEnd) return;
+
+    const root = gradebookRef.current;
+    if (!root) return;
+    const minRow = Math.min(selection.anchorRow, selection.focusRow);
+    const maxRow = Math.max(selection.anchorRow, selection.focusRow);
+    const minColumn = Math.min(selection.anchorColumn, selection.focusColumn);
+    const maxColumn = Math.max(selection.anchorColumn, selection.focusColumn);
+    const cells = Array.from(root.querySelectorAll<HTMLElement>("[data-spreadsheet-cell]"));
+    const valueAt = (row: number, column: number) => {
+      const cell = cells.find((item) => item.dataset.spreadsheetGrid === selection.gridId
+        && Number(item.dataset.spreadsheetRow) === row
+        && Number(item.dataset.spreadsheetColumn) === column);
+      if (!cell) return "";
+      const cellInput = cell.querySelector<HTMLInputElement>("input[data-spreadsheet-input]");
+      if (cellInput) {
+        const parsed = parseSpreadsheetScore(cellInput.value);
+        return parsed.valid && parsed.score !== null ? formatPoints(parsed.score) : "";
+      }
+      return cell.dataset.spreadsheetValue ?? "";
+    };
+    const text = Array.from({ length: maxRow - minRow + 1 }, (_, rowIndex) =>
+      Array.from({ length: maxColumn - minColumn + 1 }, (_, columnIndex) => valueAt(minRow + rowIndex, minColumn + columnIndex)).join("\t"),
+    ).join("\r\n");
+    event.clipboardData.setData("text/plain", text);
+    event.preventDefault();
+  };
+
+  const handleSpreadsheetPaste = (event: ReactClipboardEvent<HTMLElement>) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const input = target?.closest<HTMLInputElement>("input[data-spreadsheet-input]");
+    const cell = target?.closest<HTMLElement>("[data-spreadsheet-cell]");
+    const header = target?.closest<HTMLElement>("[data-spreadsheet-column-header]");
+    const selection = spreadsheetSelectionRef.current;
+    const clipboardText = event.clipboardData.getData("text/plain");
+    if (!clipboardText || (!input && !cell && !header && !selection)) return;
+
+    const matrix = parseClipboardMatrix(clipboardText);
+    const hasMultipleValues = matrix.length > 1 || matrix.some((row) => row.length > 1);
+    const selectionSpansMultipleCells = selection !== null && (
+      selection.anchorRow !== selection.focusRow || selection.anchorColumn !== selection.focusColumn
+    );
+    const containsDecimalComma = matrix.some((row) => row.some((value) => value.includes(",")));
+    if (!hasMultipleValues && !selectionSpansMultipleCells && input && !containsDecimalComma) return;
+
+    const targetGridId = cell?.dataset.spreadsheetGrid ?? header?.dataset.spreadsheetGrid;
+    const selectionApplies = selection && (selectionSpansMultipleCells || !cell) && (!targetGridId || selection.gridId === targetGridId);
+    const gridId = selectionApplies ? selection.gridId : targetGridId ?? selection?.gridId;
+    if (!gridId) return;
+
+    let startRow = cell ? Number(cell.dataset.spreadsheetRow) : 0;
+    let startColumn = cell ? Number(cell.dataset.spreadsheetColumn) : 0;
+    if (selectionApplies && selection) {
+      startRow = Math.min(selection.anchorRow, selection.focusRow);
+      startColumn = Math.min(selection.anchorColumn, selection.focusColumn);
+    }
+    if (!Number.isFinite(startRow) || !Number.isFinite(startColumn)) return;
+
+    const root = gradebookRef.current;
+    if (!root) return;
+    const cells = Array.from(root.querySelectorAll<HTMLElement>("[data-spreadsheet-cell]"));
+    let applied = 0;
+    let rejected = 0;
+    let firstError = "";
+    matrix.forEach((rowValues, rowOffset) => rowValues.forEach((value, columnOffset) => {
+      const destination = cells.find((item) => item.dataset.spreadsheetGrid === gridId
+        && Number(item.dataset.spreadsheetRow) === startRow + rowOffset
+        && Number(item.dataset.spreadsheetColumn) === startColumn + columnOffset);
+      const scoreInput = destination?.querySelector<HTMLInputElement>("input[data-spreadsheet-input]");
+      if (!scoreInput) return;
+      const studentId = scoreInput.dataset.studentId;
+      const componentId = scoreInput.dataset.componentId;
+      if (!studentId || !componentId) return;
+      const parsed = parseSpreadsheetScore(value);
+      if (!parsed.valid) {
+        rejected += 1;
+        return;
+      }
+      const error = setStudentComponentScore(studentId, componentId, parsed.score);
+      if (error) {
+        rejected += 1;
+        firstError ||= error;
+      } else {
+        applied += 1;
+      }
+    }));
+    event.preventDefault();
+    if (rejected > 0) {
+      toast.error(`${rejected} célula(s) não foram coladas. ${firstError || "Use apenas notas numéricas."}`);
+    } else if (applied > 1) {
+      toast.success(`${applied} notas coladas.`);
+    }
+  };
   const allStudents = useMemo(
     () => data.students
       .filter((student) => student.turma === turma.name)
@@ -273,75 +475,98 @@ export function Gradebook({
     ? gradesByStudent.get(studentId)?.activitySummary.activityGrade ?? 0
     : scoreByStudentComponent.get(studentId + ":" + component.id);
 
-  const renderBranchTable = (block: typeof EVALUATION_BLOCKS[number], component: EvaluationComponent) => component.kind === "activities" ? (
-    <ActivitySummary
-      turma={turma}
-      term={term}
-      data={data}
-      students={students}
-      activityMaximum={component.maxPoints ?? 0}
-      addActivity={addActivity}
-      updateActivity={updateActivity}
-      removeActivity={removeActivity}
-      toggleActivityRecord={toggleActivityRecord}
-      getActivityRecordFull={getActivityRecordFull}
-      setActivityOnTimeOverride={setActivityOnTimeOverride}
-    />
-  ) : (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-4 py-3">
-        <div className="min-w-0">
-          <h3 className="font-semibold">{component.name}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {component.maxPoints === null ? "Sem limite de pontuação" : "Limite de " + formatPoints(component.maxPoints) + " pontos"}
-          </p>
+  const renderBranchTable = (block: typeof EVALUATION_BLOCKS[number], component: EvaluationComponent) => {
+    if (component.kind === "activities") {
+      return (
+        <ActivitySummary
+          turma={turma}
+          term={term}
+          data={data}
+          students={students}
+          activityMaximum={component.maxPoints ?? 0}
+          addActivity={addActivity}
+          updateActivity={updateActivity}
+          removeActivity={removeActivity}
+          toggleActivityRecord={toggleActivityRecord}
+          getActivityRecordFull={getActivityRecordFull}
+          setActivityOnTimeOverride={setActivityOnTimeOverride}
+        />
+      );
+    }
+
+    const gridId = `branch-${turma.id}-${term}-${component.id}`;
+    return (
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-4 py-3">
+          <div className="min-w-0">
+            <h3 className="font-semibold">{component.name}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {component.maxPoints === null ? "Sem limite de pontuação" : "Limite de " + formatPoints(component.maxPoints) + " pontos"}
+              {" · Selecione células e use Ctrl+C/Ctrl+V"}
+            </p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="school-table min-w-full">
+            <thead><tr>
+              <th className="w-[42%]">
+                <button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button>
+              </th>
+              <th className="text-center">
+                <button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={1} data-spreadsheet-row-count={students.length} title="Selecionar todas as notas desta ramificação">Nota</button>
+              </th>
+            </tr></thead>
+            <tbody>
+              {students.length === 0 ? (
+                <tr><td colSpan={2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+              ) : students.map((student, rowIndex) => {
+                const score = componentScore(student.id, component);
+                return <tr key={student.id}>
+                  <td
+                    {...spreadsheetCellAttributes(gridId, rowIndex, 0, student.name)}
+                    className={`whitespace-nowrap font-medium ${isSpreadsheetCellSelected(gridId, rowIndex, 0) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                  >{student.name}</td>
+                  <td
+                    {...spreadsheetCellAttributes(gridId, rowIndex, 1, score == null ? "" : formatPoints(score))}
+                    className={`text-center ${isSpreadsheetCellSelected(gridId, rowIndex, 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                  >
+                    <div className="mx-auto flex max-w-40 items-center justify-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={component.maxPoints ?? undefined}
+                        step="0.01"
+                        inputMode="decimal"
+                        aria-label={student.name + " — " + block.label + " — " + component.name}
+                        value={score ?? ""}
+                        placeholder="—"
+                        data-spreadsheet-input="true"
+                        data-student-id={student.id}
+                        data-component-id={component.id}
+                        onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
+                        className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-sm shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                      />
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">{component.maxPoints === null ? "pts" : "/ " + formatPoints(component.maxPoints)}</span>
+                    </div>
+                  </td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="school-table min-w-full">
-          <thead><tr>
-            <th className="w-[42%]">Aluno</th>
-            <th className="text-center">Nota</th>
-          </tr></thead>
-          <tbody>
-            {students.length === 0 ? (
-              <tr><td colSpan={2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
-            ) : students.map((student) => {
-              const score = componentScore(student.id, component);
-              return <tr key={student.id}>
-                <td className="whitespace-nowrap font-medium">{student.name}</td>
-                <td className="text-center">
-                  <div className="mx-auto flex max-w-40 items-center justify-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      max={component.maxPoints ?? undefined}
-                      step="0.01"
-                      inputMode="decimal"
-                      aria-label={student.name + " — " + block.label + " — " + component.name}
-                      value={score ?? ""}
-                      placeholder="—"
-                      onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
-                      className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-sm shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
-                    />
-                    <span className="whitespace-nowrap text-xs text-muted-foreground">{component.maxPoints === null ? "pts" : "/ " + formatPoints(component.maxPoints)}</span>
-                  </div>
-                </td>
-              </tr>;
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+    );
+  };
 
-  const renderBlockDetailSheet = (block: typeof EVALUATION_BLOCKS[number] & { components: EvaluationComponent[] }) => (
+  const renderBlockDetailSheet = (block: typeof EVALUATION_BLOCKS[number] & { components: EvaluationComponent[] }) => {
+    const gridId = `block-${turma.id}-${term}-${block.id}`;
+    return (
     <details className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Table2 size={17} /></span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">Planilha completa — {block.id === "PE" ? "Pontuação extra (P.E.)" : block.label}</span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">Recolhida. Expanda para consultar todas as ramificações e o total do bloco.</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">Recolhida. Expanda para editar várias ramificações e copiar ou colar notas em conjunto.</span>
         </span>
         <ChevronDown size={18} className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
@@ -349,31 +574,82 @@ export function Gradebook({
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="school-table min-w-full">
             <thead><tr>
-              <th>Aluno</th>
-              {block.components.map((component) => <th key={component.id} className="text-center">
-                <span className="block">{component.name}</span>
-                <span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{component.kind === "activities" ? "calculada" : component.maxPoints === null ? "sem limite" : "até " + formatPoints(component.maxPoints) + " pts"}</span>
+              <th>
+                <button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button>
+              </th>
+              {block.components.map((component, componentIndex) => <th key={component.id} className="text-center">
+                <button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={componentIndex + 1} data-spreadsheet-row-count={students.length} title={`Selecionar a coluna ${component.name}`}>
+                  <span className="block">{component.name}</span>
+                  <span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{component.kind === "activities" ? "calculada" : component.maxPoints === null ? "sem limite" : "até " + formatPoints(component.maxPoints) + " pts"}</span>
+                </button>
               </th>)}
-              <th className="text-center">Total {block.label}</th>
+              <th className="text-center">
+                <button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={block.components.length + 1} data-spreadsheet-row-count={students.length} title="Selecionar a coluna dos totais">Total {block.label}</button>
+              </th>
             </tr></thead>
             <tbody>{students.length === 0 ? (
               <tr><td colSpan={block.components.length + 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
-            ) : students.map((student) => <tr key={student.id}>
-              <td className="whitespace-nowrap font-medium">{student.name}</td>
-              {block.components.map((component) => {
+            ) : students.map((student, rowIndex) => <tr key={student.id}>
+              <td
+                {...spreadsheetCellAttributes(gridId, rowIndex, 0, student.name)}
+                className={`whitespace-nowrap font-medium ${isSpreadsheetCellSelected(gridId, rowIndex, 0) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+              >{student.name}</td>
+              {block.components.map((component, componentIndex) => {
                 const score = componentScore(student.id, component);
-                return <td key={component.id} className="text-center">{score === undefined ? <span className="text-muted-foreground">—</span> : formatPoints(score)}</td>;
+                const gridColumn = componentIndex + 1;
+                const scoreValue = score == null ? "" : formatPoints(score);
+                return <td
+                  key={component.id}
+                  {...spreadsheetCellAttributes(gridId, rowIndex, gridColumn, scoreValue)}
+                  className={`text-center ${isSpreadsheetCellSelected(gridId, rowIndex, gridColumn) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                >
+                  {component.kind === "activities" ? (
+                    scoreValue || <span className="text-muted-foreground">—</span>
+                  ) : (
+                    <input
+                      type="number"
+                      min="0"
+                      max={component.maxPoints ?? undefined}
+                      step="0.01"
+                      inputMode="decimal"
+                      aria-label={`${student.name} — ${block.label} — ${component.name}`}
+                      value={score ?? ""}
+                      placeholder="—"
+                      data-spreadsheet-input="true"
+                      data-student-id={student.id}
+                      data-component-id={component.id}
+                      onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
+                      className="w-24 rounded-md border border-input bg-background px-2 py-1.5 text-center text-sm font-medium focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                    />
+                  )}
+                </td>;
               })}
-              <td className="text-center font-bold">{formatPoints(gradesByStudent.get(student.id)!.blockTotals[block.id])}{block.maxPoints === null ? "" : " / 20"}</td>
+              <td
+                {...spreadsheetCellAttributes(gridId, rowIndex, block.components.length + 1, formatPoints(gradesByStudent.get(student.id)!.blockTotals[block.id]))}
+                className={`text-center font-bold ${isSpreadsheetCellSelected(gridId, rowIndex, block.components.length + 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+              >{formatPoints(gradesByStudent.get(student.id)!.blockTotals[block.id])}{block.maxPoints === null ? "" : " / 20"}</td>
             </tr>)}</tbody>
           </table>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">Clique no título de uma coluna ou arraste pelas células. Use Ctrl+C para copiar e Ctrl+V para colar; atividades e totais calculados não são editáveis.</p>
       </div>
     </details>
-  );
+    );
+  };
+
+  const overviewGridId = `overview-${turma.id}-${term}`;
 
   return (
-    <section className="section-card overflow-hidden">
+    <section
+      ref={gradebookRef}
+      onMouseDown={handleSpreadsheetMouseDown}
+      onMouseOver={handleSpreadsheetMouseOver}
+      onMouseUp={() => { spreadsheetDragging.current = false; }}
+      onClick={handleSpreadsheetColumnClick}
+      onCopy={handleSpreadsheetCopy}
+      onPaste={handleSpreadsheetPaste}
+      className="section-card overflow-hidden"
+    >
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card px-4 py-4 sm:px-5">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><Calculator size={20} /></div>
         <div className="min-w-0 flex-1">
@@ -402,17 +678,22 @@ export function Gradebook({
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-3">
                 <h3 className="font-semibold">Resumo geral das notas</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Clique no título de uma coluna ou arraste pelas células para selecionar. Use Ctrl+C para copiar.</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="school-table min-w-full">
                   <thead><tr>
-                    <th>Aluno</th>
-                    {componentsByBlock.map((block) => <th key={block.id} className="text-center">{block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span></th>)}
-                    <th className="text-center">Nota final</th>
+                    <th><button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button></th>
+                    {componentsByBlock.map((block, blockIndex) => <th key={block.id} className="text-center">
+                      <button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={blockIndex + 1} data-spreadsheet-row-count={students.length} title={`Selecionar a coluna ${block.label}`}>
+                        {block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span>
+                      </button>
+                    </th>)}
+                    <th className="text-center"><button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={componentsByBlock.length + 1} data-spreadsheet-row-count={students.length} title="Selecionar a coluna da nota final">Nota final</button></th>
                   </tr></thead>
                   <tbody>{students.length === 0 ? (
                     <tr><td colSpan={componentsByBlock.length + 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
-                  ) : students.map((student) => {
+                  ) : students.map((student, rowIndex) => {
                     const summary = gradesByStudent.get(student.id)!;
                     const history = historyByStudent.get(student.id) ?? [];
                     const historyGroups = new Map<string, HistoricalActivity[]>();
@@ -426,7 +707,10 @@ export function Gradebook({
                     return (
                       <Fragment key={student.id}>
                         <tr>
-                          <td className="min-w-[220px] font-medium">
+                          <td
+                            {...spreadsheetCellAttributes(overviewGridId, rowIndex, 0, student.name)}
+                            className={`min-w-[220px] font-medium ${isSpreadsheetCellSelected(overviewGridId, rowIndex, 0) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                          >
                             <div className="flex flex-wrap items-center gap-1.5">
                               <span className="whitespace-nowrap">{student.name}</span>
                               <DropdownMenu>
@@ -473,17 +757,21 @@ export function Gradebook({
                               )}
                             </div>
                           </td>
-                          {componentsByBlock.map((block) => {
+                          {componentsByBlock.map((block, blockIndex) => {
                             const belowAverage = block.id !== "PE" && summary.blockTotals[block.id] < 14;
                             return <td
                               key={block.id}
-                              className={`text-center font-medium ${belowAverage ? "bg-destructive/10 font-semibold text-destructive" : ""}`}
+                              {...spreadsheetCellAttributes(overviewGridId, rowIndex, blockIndex + 1, formatPoints(summary.blockTotals[block.id]))}
+                              className={`text-center font-medium ${belowAverage ? "bg-destructive/10 font-semibold text-destructive" : ""} ${isSpreadsheetCellSelected(overviewGridId, rowIndex, blockIndex + 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
                               title={belowAverage ? "Abaixo da média de 14 pontos neste bloco" : undefined}
                             >
                               {formatPoints(summary.blockTotals[block.id])}
                             </td>;
                           })}
-                          <td className="text-center">
+                          <td
+                            {...spreadsheetCellAttributes(overviewGridId, rowIndex, componentsByBlock.length + 1, formatPoints(summary.finalTotal))}
+                            className={`text-center ${isSpreadsheetCellSelected(overviewGridId, rowIndex, componentsByBlock.length + 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                          >
                             <span
                               className={`inline-flex min-w-16 justify-center rounded-full px-3 py-1 font-bold ${summary.finalTotal < 70 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
                               title={summary.finalTotal < 70 ? "Nota final abaixo da média de 70 pontos" : undefined}
