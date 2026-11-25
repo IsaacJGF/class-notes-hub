@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Activity, ActivityRecord, AcademicTerm, SchoolData, Student, Turma } from "@/types";
 import { AlertTriangle, ArrowRightLeft, CalendarDays, CheckCircle, Download, MoreHorizontal, Plus, Pencil, Trash2, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -44,6 +44,7 @@ interface Props {
   toggleActivityRecord: (studentId: string, activityId: string) => void;
   getActivityRecordFull: (studentId: string, activityId: string) => ActivityRecord | null;
   setActivityOnTimeOverride: (studentId: string, activityId: string, override: boolean) => void;
+  renderStudentSearch: (placement: "header" | "gradebook") => ReactNode;
 }
 
 export function ActivitySummary({
@@ -58,6 +59,7 @@ export function ActivitySummary({
   toggleActivityRecord,
   getActivityRecordFull,
   setActivityOnTimeOverride,
+  renderStudentSearch,
 }: Props) {
   const [activityName, setActivityName] = useState("");
   const [activityDate, setActivityDate] = useState(() => formatLocalDate());
@@ -284,6 +286,10 @@ export function ActivitySummary({
           </div>
         </div>
       </details>}
+
+      <div className="flex justify-end border-b border-border bg-card px-3 py-2 sm:px-4">
+        {renderStudentSearch("gradebook")}
+      </div>
 
       {students.length === 0 ? (
         <div className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado. Confira a pesquisa ou cadastre alunos para esta turma.</div>
