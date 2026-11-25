@@ -1,0 +1,62 @@
+name: Etapa 00 - baseline isolada
+on:
+  push:
+    branches: [audit/etapa00-4d4faf1]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 4d4faf185853ab1d744bf91e62720129814f21d8
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Baseline build and tests
+        shell: bash
+        run: |
+          mkdir -p evidence runner
+          cd baseline
+          git rev-parse HEAD > ../evidence/sha.txt
+          node --version > ../evidence/node.txt
+          npm --version > ../evidence/npm.txt
+          set -o pipefail
+          npm ci --no-audit --no-fund 2>&1 | tee ../evidence/install.txt
+          set +e
+          for task in build lint test; do
+            npm run "$task" > "../evidence/$task.txt" 2>&1
+            echo "$task=$?" >> ../evidence/status.txt
+          done
+          git status --porcelain > ../evidence/git-status.txt
+          cat ../evidence/status.txt
+      - name: Browser audit
+        shell: bash
+        run: |
+          cp .github/audit-etapa00.mjs runner/audit.mjs
+          cd runner
+          npm install --no-audit --no-fund playwright@1.52.0
+          npx playwright install --with-deps chromium
+          cd ../baseline
+          npm run dev -- --strictPort > ../evidence/vite.txt 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          cd ..
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5173/ >/dev/null && break; sleep 1; done
+          node runner/audit.mjs "$PWD/evidence" "$PWD/baseline" 2>&1 | tee evidence/browser-audit.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etapa00-4d4faf1
+          path: evidence/
+          retention-days: 14
