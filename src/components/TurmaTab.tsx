@@ -42,6 +42,7 @@ export function TurmaTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
+  const [activeGradebookTab, setActiveGradebookTab] = useState("overview");
   const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +92,38 @@ export function TurmaTab({
     [data.activities, turma.id, selectedTerm],
   );
 
+  const renderStudentSearch = (placement: "header" | "gradebook") => showSearch ? (
+    <div className={`flex min-w-0 items-center gap-1 rounded border border-border bg-background px-2 py-1 ${placement === "header" ? "flex-1 sm:w-[260px]" : "w-full sm:w-56"}`}>
+      <Search size={14} className="shrink-0 text-muted-foreground" />
+      <input
+        ref={searchInputRef}
+        type="text"
+        placeholder="Pesquisar aluno..."
+        className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.currentTarget.value)}
+        aria-label="Pesquisar aluno"
+      />
+      {searchQuery && <span className="mr-1 shrink-0 text-xs text-muted-foreground">{visibleStudentCount}/{allTurmaStudents.length}</span>}
+      <button
+        onClick={() => { setShowSearch(false); setSearchQuery(""); }}
+        className="flex min-h-9 min-w-9 shrink-0 touch-manipulation items-center justify-center rounded p-1 hover:opacity-70"
+        aria-label="Fechar pesquisa"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  ) : (
+    <button
+      onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
+      className={`flex min-h-9 touch-manipulation items-center justify-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80 ${placement === "gradebook" ? "w-full sm:w-auto" : ""}`}
+      style={{ color: "hsl(var(--muted-foreground))" }}
+      title="Pesquisar (Ctrl+F)"
+    >
+      <Search size={12} /> Pesquisar
+    </button>
+  );
+
   const handleAddStudent = (event: FormEvent) => {
     event.preventDefault();
     if (!newStudentName.trim()) return;
@@ -122,37 +155,7 @@ export function TurmaTab({
           >
             {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
           </button>
-          {showSearch ? (
-            <div className="flex min-w-0 flex-1 items-center gap-1 rounded border border-border bg-background px-2 py-1 sm:flex-none">
-              <Search size={14} className="shrink-0 text-muted-foreground" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Pesquisar aluno..."
-                className="w-full bg-transparent text-sm outline-none sm:w-48"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.currentTarget.value)}
-                aria-label="Pesquisar aluno"
-              />
-              {searchQuery && <span className="mr-1 text-xs text-muted-foreground">{visibleStudentCount}/{allTurmaStudents.length}</span>}
-              <button
-                onClick={() => { setShowSearch(false); setSearchQuery(""); }}
-                className="flex min-h-9 min-w-9 touch-manipulation items-center justify-center rounded p-1 hover:opacity-70"
-                aria-label="Fechar pesquisa"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
-              className="flex min-h-9 touch-manipulation items-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80"
-              style={{ color: "hsl(var(--muted-foreground))" }}
-              title="Pesquisar (Ctrl+F)"
-            >
-              <Search size={12} /> Pesquisar
-            </button>
-          )}
+          {activeGradebookTab === "overview" && renderStudentSearch("header")}
           <button
             onClick={() => setAddStudentDialogOpen(true)}
             className="flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm hover:opacity-90"
@@ -171,6 +174,9 @@ export function TurmaTab({
         transferStudent={transferStudent}
         searchQuery={searchQuery}
         studentSortOrder={studentSortOrder}
+        activeTab={activeGradebookTab}
+        onActiveTabChange={setActiveGradebookTab}
+        renderStudentSearch={renderStudentSearch}
         setStudentComponentScore={setStudentComponentScore}
         saveEvaluationConfiguration={saveEvaluationConfiguration}
         addActivity={addActivity}
