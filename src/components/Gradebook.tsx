@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, MoreHorizontal, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
@@ -30,6 +30,9 @@ interface Props {
   transferStudent: (studentId: string, targetTurmaId: string) => void;
   searchQuery: string;
   studentSortOrder: "asc" | "desc";
+  activeTab: string;
+  onActiveTabChange: (tab: string) => void;
+  renderStudentSearch: (placement: "header" | "gradebook") => ReactNode;
   setStudentComponentScore: (studentId: string, componentId: string, score: number | null) => string | null;
   saveEvaluationConfiguration: (turmaId: string, term: AcademicTerm, components: EvaluationComponent[]) => string | null;
   addActivity: (turmaId: string, name: string, date: string, term: AcademicTerm, deadline?: string) => Activity;
@@ -96,6 +99,9 @@ export function Gradebook({
   transferStudent,
   searchQuery,
   studentSortOrder,
+  activeTab,
+  onActiveTabChange,
+  renderStudentSearch,
   setStudentComponentScore,
   saveEvaluationConfiguration,
   addActivity,
@@ -666,12 +672,15 @@ export function Gradebook({
         </div>
       </div>
       <div className="p-3 sm:p-5">
-        <Tabs defaultValue="overview" className="space-y-4">
-          <div className="overflow-x-auto pb-1">
-            <TabsList aria-label="Blocos de notas" className="inline-flex h-auto min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1 sm:min-w-0">
+        <Tabs defaultValue="overview" onValueChange={onActiveTabChange} className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0 flex-1 overflow-x-auto pb-1">
+              <TabsList aria-label="Blocos de notas" className="inline-flex h-auto min-w-max justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1">
               <TabsTrigger value="overview" className="min-h-10 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm">Geral</TabsTrigger>
               {componentsByBlock.map((block) => <TabsTrigger key={block.id} value={block.id} className="min-h-10 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm">{block.id === "PE" ? "Pontuação extra" : block.label}</TabsTrigger>)}
-            </TabsList>
+              </TabsList>
+            </div>
+            {activeTab !== "overview" && <div className="flex w-full justify-end sm:w-auto">{renderStudentSearch("gradebook")}</div>}
           </div>
 
           <TabsContent value="overview" className="mt-0 space-y-4">
