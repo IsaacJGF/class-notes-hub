@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
@@ -39,11 +39,14 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
+          tail -n 15 ../evidence/test.txt
+          tail -n 30 ../evidence/lint.txt
       - name: Browser audit
         shell: bash
         run: |
           cp .github/audit-etapa00.mjs runner/audit.mjs
           cd runner
+          printf '{"private":true}\n' > package.json
           npm install --no-audit --no-fund playwright@1.52.0
           npx playwright install --with-deps chromium
           cd ../baseline
