@@ -43,6 +43,43 @@ await run('periodos-persistencia',async()=>{const select=p.getByLabel('Seleciona
 await run('ordenacao',async()=>{await p.getByRole('button',{name:'A → Z'}).click();assert.equal(await inputs().first().getAttribute('data-student-id'),'s41');await p.getByRole('button',{name:'Z → A'}).click();assert.equal(await inputs().first().getAttribute('data-student-id'),'s1')});
 await run('exportacao',async()=>{const dl=p.waitForEvent('download');await p.getByRole('button',{name:'Exportar Excel'}).click();const file=await dl;await file.saveAs(path.join(out,tag+'-exportacao.xlsx'));return {filename:file.suggestedFilename()}});
 await run('navegacao-cabecalho',async()=>{await p.evaluate(()=>window.scrollTo(0,0));const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});await nav.waitFor();const header=p.locator('.app-header');const headerBox=await header.boundingBox();const desktop=width>=640;assert(headerBox.height>=(desktop?49:44));const active=nav.getByRole('button',{name:'Turma Fictícia A',exact:true});assert.equal(await active.getAttribute('aria-pressed'),'true');await nav.getByRole('button',{name:'Turma Fictícia B',exact:true}).click();assert.equal(await nav.getByRole('button',{name:'Turma Fictícia B',exact:true}).getAttribute('aria-pressed'),'true');await nav.getByRole('button',{name:'Turma Fictícia A',exact:true}).click();await tab('Geral');await p.keyboard.press('Control+f');const search=p.getByRole('textbox',{name:'Pesquisar aluno'});await search.waitFor();assert.equal(await search.locator('xpath=ancestor::*[contains(@class,"class-context")]').count(),1);await p.keyboard.press('Escape');await tab('AL');await inputs().nth(30).scrollIntoViewIfNeeded();const before=await metrics();await p.keyboard.press('Control+f');await search.waitFor();await p.waitForTimeout(150);assert.equal(await search.locator('xpath=ancestor::*[contains(@class,"gradebook-search-toolbar")]').count(),1);assert.equal(await search.evaluate(el=>el===document.activeElement),true);const box=await search.boundingBox();assert(box&&box.y>=0&&box.y+box.height<=height,'search outside viewport');const after=await metrics();await shot('pr02-pesquisa-aderente');await p.keyboard.press('Escape');const pageWidth=await p.evaluate(()=>document.documentElement.scrollWidth);return {headerHeight:headerBox.height,navHeight:(await nav.boundingBox()).height,viewport:width,pageWidth,deltaY:after.scrollY-before.scrollY,searchVisible:true};});
+await run('pr03-modal-teclado',async()=>{
+  await p.evaluate(()=>window.scrollTo(0,0));await p.getByRole('button',{name:'Adicionar aluno',exact:true}).first().click();
+  const dialog=p.getByRole('dialog');await dialog.waitFor();await p.waitForTimeout(250);
+  const box=await dialog.boundingBox();assert(box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=width+1&&box.y+box.height<=height+1,'modal outside viewport');
+  for(let i=0;i<6;i++){await p.keyboard.press('Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'focus escaped dialog');}
+  await shot('pr03-modal-teclado');await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});return {keyboardTrap:true,escape:true,box};
+});
+await run('pr03-tooltip-estados',async()=>{
+  await tab('AEP');const buttons=p.getByRole('button',{name:/Aluno Fictício 0[1-9]: Atividade fictícia 1/});
+  let states=[];for(const label of ['No prazo','Atrasada','Pendente']){
+    const target=buttons.filter({hasNotText:'__never__'});const count=await target.count();
+    let chosen=null;for(let i=0;i<count;i++){const b=target.nth(i);if((await b.getAttribute('aria-label')||'').toLowerCase().includes(label.toLowerCase())){chosen=b;break;}}
+    if(!chosen){states.push({label,available:false});continue;}
+    await chosen.scrollIntoViewIfNeeded();await chosen.hover();await p.getByRole('tooltip').waitFor();await p.waitForTimeout(220);
+    const pop=p.locator('[data-radix-popper-content-wrapper]:visible').last();const box=await pop.boundingBox();assert(box&&box.x>=-2&&box.y>=-2&&box.x+box.width<=width+2&&box.y+box.height<=height+2,'tooltip outside viewport');
+    await shot('pr03-tooltip-'+label.replaceAll(' ','-'));states.push({label,available:true,box});await p.mouse.move(0,0);await p.waitForTimeout(200);
+  }assert(states.some(x=>x.available),'no fixture status available');return states;
+});
+await run('pr03-transferencia',async()=>{
+  await p.getByRole('navigation',{name:'Cadastro e turmas'}).getByRole('button',{name:'Cadastro',exact:true}).click();
+  const before=await storage();const student=before.students.find(x=>x.id==='s1');assert(student);
+  await p.getByRole('button',{name:'Ações de Aluno Fictício 01',exact:true}).click();
+  await p.getByRole('menuitem',{name:'Transferir para outra turma'}).click();
+  const dialog=p.getByRole('dialog');await dialog.waitFor();await dialog.locator('select').selectOption('audit-b');await shot('pr03-transferencia');
+  await dialog.getByRole('button',{name:'Cancelar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  assert.equal((await storage()).students.find(x=>x.id==='s1').turma,student.turma);
+  await p.getByRole('button',{name:'Ações de Aluno Fictício 01',exact:true}).click();await p.getByRole('menuitem',{name:'Transferir para outra turma'}).click();await dialog.waitFor();await dialog.locator('select').selectOption('audit-b');await dialog.getByRole('button',{name:'Transferir',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  const after=await storage();assert.equal(after.students.find(x=>x.id==='s1').turma,'Turma Fictícia B');assert.equal(after.students.length,before.students.length);assert.deepEqual(after.activityRecords,before.activityRecords);return {cancelPreserved:true,transferPreservedHistory:true,studentCount:after.students.length};
+});
+await run('pr03-csv',async()=>{
+  await p.getByRole('button',{name:'Importar CSV',exact:true}).click();const dialog=p.getByRole('dialog');await dialog.waitFor();await p.waitForTimeout(250);await shot('pr03-csv-inicial');
+  const before=await storage();const file=dialog.locator('input[type=file]');await file.setInputFiles({name:'fixture-audit.csv',mimeType:'text/csv',buffer:Buffer.from('nome,turma\\nAluno CSV Fictício,Turma Fictícia A\\n,Turma Fictícia A\\n','utf8')});
+  await dialog.getByText('Nome em branco',{exact:false}).first().waitFor();await shot('pr03-csv-validacao');
+  await dialog.getByRole('button',{name:/^Importar 1 aluno$/}).click();await dialog.getByText(/1 aluno importado com sucesso/).waitFor();
+  const after=await storage();assert.equal(after.students.length,before.students.length+1);assert.equal(after.students.filter(x=>x.name==='Aluno CSV Fictício').length,1);assert.equal(after.turmas.length,before.turmas.length);await shot('pr03-csv-sucesso');
+  await dialog.getByRole('button',{name:'Concluir',exact:true}).click();await dialog.waitFor({state:'hidden'});await p.getByRole('button',{name:'Importar CSV',exact:true}).click();await dialog.waitFor();await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});return {validImported:1,invalidIgnored:1,existingClassReused:true,escape:true};
+});
 results.push({tag,name:'pageerrors',status:errors.length?'fail':'pass',errors});flush();await context.close();
 }}finally{await browser.close();flush()}
 if(results.some(r=>r.status==='fail'))process.exitCode=1;
