@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 332ee0c09aab4de25163a4646543654be947c7ef
+          ref: bc2180f08e2d86c15c1f37e21341f7949f7a3be5
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
-          test "$(git rev-parse HEAD)" = 332ee0c09aab4de25163a4646543654be947c7ef
+          test "$(git rev-parse HEAD)" = bc2180f08e2d86c15c1f37e21341f7949f7a3be5
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
           grep -qx "build=0" ../evidence/status.txt && grep -qx "test=0" ../evidence/status.txt
@@ -62,6 +62,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr04-soft-blue-332ee0c
+          name: pr04-soft-blue-bc2180f-reteste2
           path: evidence/
           retention-days: 14

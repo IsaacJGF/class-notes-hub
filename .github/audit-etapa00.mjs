@@ -54,14 +54,22 @@ await run('pr04-matriz-selecao',async()=>{
  await tab('AEP');const details=p.locator('details').filter({has:p.locator('summary').getByText('Planilha completa — AEP',{exact:true})});await details.locator('summary').click();
  const region=p.getByRole('region',{name:'Planilha completa de AEP'});await region.waitFor();
  const cell=(r,c)=>region.locator('[data-spreadsheet-row="'+r+'"][data-spreadsheet-column="'+c+'"]');
- const start=cell(0,1),end=cell(2,2);await start.scrollIntoViewIfNeeded();await start.click();await end.click({modifiers:['Shift']});
- assert.equal(await region.locator('[data-spreadsheet-selected=true]').count(),6);await p.keyboard.press('Control+c');const copied=await p.evaluate(()=>navigator.clipboard.readText());const copiedRows=copied.split(/\r?\n/).map(x=>x.split('\t'));assert.equal(copiedRows.length,3);assert(copiedRows.every(x=>x.length===2));await shot('pr04-selecao-retangular');
+ const start=cell(0,1),end=cell(2,2);await start.scrollIntoViewIfNeeded();await start.click();await end.locator('input').click({modifiers:['Shift']});
+ assert.equal(await region.locator('[data-spreadsheet-selected=true]').count(),6);
+ const expected=[];for(let r=0;r<3;r++){let row=[];for(let c=1;c<=2;c++)row.push(await cell(r,c).getAttribute('data-spreadsheet-value'));expected.push(row);}
+ const copy=async()=>{await p.evaluate(()=>navigator.clipboard.writeText('__AUDIT_SENTINEL__'));await p.keyboard.press('Control+c');await p.waitForFunction(async()=>await navigator.clipboard.readText()!=='__AUDIT_SENTINEL__',null,{timeout:2500});return (await p.evaluate(()=>navigator.clipboard.readText())).split(/\r?\n/).map(x=>x.split('\t'));};
+ const focused=await p.evaluate(()=>({tag:document.activeElement?.tagName,grid:document.activeElement?.closest('[data-spreadsheet-cell]')?.getAttribute('data-spreadsheet-grid'),native:window.getSelection()?.toString()}));
+ assert(focused.grid,'selection focus not in spreadsheet '+JSON.stringify(focused));assert.equal(focused.native,'');
+ const copiedRows=await copy();assert.deepEqual(copiedRows,expected,'clipboard range contents');await shot('pr04-selecao-retangular');
  const before=await storage();const calcBefore=await cell(0,1).getAttribute('data-spreadsheet-value');
  const matrix=[['99','3,25'],['99','0'],['99','']].map(r=>r.join(String.fromCharCode(9))).join(String.fromCharCode(10));
  await p.evaluate(v=>navigator.clipboard.writeText(v),matrix);await p.keyboard.press('Control+v');await p.waitForTimeout(250);
  const after=await storage();const values=['s1','s2','s3'].map(id=>after.componentScores.find(x=>x.studentId===id&&x.componentId==='audit-1-Feira')?.score??null);
  assert.deepEqual(values,[3.25,0,null]);assert.equal(await cell(0,1).getAttribute('data-spreadsheet-value'),calcBefore);assert.deepEqual(after.activityRecords,before.activityRecords);
- await shot('pr04-matriz-colada');await details.locator('summary').click();return {selected:6,copiedRows,values,calculatedUnchanged:true};
+ await shot('pr04-matriz-colada');
+ await start.scrollIntoViewIfNeeded();await end.scrollIntoViewIfNeeded();const first=await start.boundingBox(),last=await end.boundingBox();assert(first&&last);await p.mouse.move(first.x+first.width/2,first.y+first.height/2);await p.mouse.down();try{await p.mouse.move(last.x+last.width/2,last.y+last.height/2,{steps:12});}finally{await p.mouse.up();}
+ assert.equal(await region.locator('[data-spreadsheet-selected=true]').count(),6,'drag range');const dragged=await copy();const expectedAfter=[];for(let r=0;r<3;r++){let row=[];for(let c=1;c<=2;c++)row.push(await cell(r,c).getAttribute('data-spreadsheet-value'));expectedAfter.push(row);}assert.deepEqual(dragged,expectedAfter,'drag clipboard contents');
+ await shot('pr04-arraste');await details.locator('summary').click();return {selected:6,copiedRows,values,calculatedUnchanged:true,dragged};
 });
 await run('pr03-modal-teclado',async()=>{
   await p.evaluate(()=>window.scrollTo(0,0));await p.getByRole('button',{name:'Adicionar aluno',exact:true}).first().click();
