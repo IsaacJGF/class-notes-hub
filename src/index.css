@@ -394,7 +394,11 @@
   font-size: 14px;
 }
 .gradebook-workspace .overview-table td[data-spreadsheet-selected="true"] { background-color: hsl(var(--surface-selection)); }
+/* Keep absolutely positioned screen-reader text within the scrollable table.
+   Do not mask overflow on the page: the final column must remain reachable. */
+.gradebook-workspace .gradebook-overview-scroll { position: relative; }
 .gradebook-workspace .overview-table .overview-value {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;

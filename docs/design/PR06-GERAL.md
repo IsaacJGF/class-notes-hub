@@ -8,3 +8,6 @@ App.tsx monta Index na rota /, e NotFound na rota *. Index monta StudentRegistra
 - 06.04: limites já existentes 14 por bloco (exceto PE) e 70 na final, ícone e rótulo de acessibilidade além de cor, cabeçalhos de coluna identificados; legenda explícita de que total inclui P.E.; histórico com tokens de status existentes. Não criar classificações novas.
 - 06.05: comparar cada valor de todos os 41 alunos em 3 períodos com cálculo independente da fixture, incluindo zero, ausência, atraso, PE; testar seleção/cópia da final, filtro e estado vazio; conferir histórico após transferência, preservar scroll, densidade e exportações. Repetir 75 checks do PR05.
 Sem mudanças nas fórmulas, cálculo, dados, handlers, exportações, dependências, armazenamento ou versão. Auditoria Electron/Windows e desempenho controlado pendentes. Sem merge automático.
+
+## Reteste de responsividade
+Primeira auditoria: 84/84 verificações passaram, 2.583 valores conferidos, mas documentWidth na Geral mobile era 588px para viewport de 390px (PR05: 390px). Hipótese: texto sr-only absoluto escapa do ancestral de rolagem. Ancorar posicionamento na célula e na região de rolagem, sem ocultar overflow global. Acrescentar assert de largura em todos os trimestres, estado filtrado/vazio, histórico e teste de acesso à coluna final pela rolagem horizontal. Aprovação técnica pendente do reteste.
