@@ -46,6 +46,14 @@ export function TurmaTab({
   const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
+  const addStudentButtonRef = useRef<HTMLButtonElement>(null);
+  const closeSearch = () => {
+    const wasFocused = searchInputRef.current?.parentElement?.contains(document.activeElement);
+    setShowSearch(false);
+    setSearchQuery("");
+    if (wasFocused) requestAnimationFrame(() => searchButtonRef.current?.focus({ preventScroll: true }));
+  };
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -72,8 +80,7 @@ export function TurmaTab({
       }
       if (event.key === "Escape" && showSearch) {
         if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
-        setShowSearch(false);
-        setSearchQuery("");
+        closeSearch();
       }
     };
     window.addEventListener("keydown", handler);
@@ -112,9 +119,10 @@ export function TurmaTab({
         onChange={(event) => setSearchQuery(event.currentTarget.value)}
         aria-label="Pesquisar aluno"
       />
-      {searchQuery && <span className="mr-1 shrink-0 text-xs text-muted-foreground">{visibleStudentCount}/{allTurmaStudents.length}</span>}
+      {searchQuery && <span className="mr-1 shrink-0 text-xs text-muted-foreground" role="status" aria-live="polite" aria-atomic="true" aria-label={`${visibleStudentCount} de ${allTurmaStudents.length} alunos`}>{visibleStudentCount}/{allTurmaStudents.length}</span>}
       <button
-        onClick={() => { setShowSearch(false); setSearchQuery(""); }}
+        type="button"
+        onClick={closeSearch}
         className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-button p-1 text-muted-foreground hover:bg-muted sm:min-h-8 sm:min-w-8"
         aria-label="Fechar pesquisa"
       >
@@ -123,6 +131,9 @@ export function TurmaTab({
     </div>
   ) : (
     <button
+      ref={searchButtonRef}
+      type="button"
+      aria-keyshortcuts="Control+F Meta+F"
       onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
       className={`flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-button border border-input bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:min-h-8 ${placement === "gradebook" ? "w-full sm:w-auto" : ""}`}
       title="Pesquisar (Ctrl+F)"
@@ -162,6 +173,7 @@ export function TurmaTab({
           </button>
           {activeGradebookTab === "overview" && renderStudentSearch("header")}
           <button
+            ref={addStudentButtonRef}
             onClick={() => setAddStudentDialogOpen(true)}
             className="flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-button bg-action px-3 py-1 text-xs font-semibold text-action-foreground hover:bg-action/90 sm:min-h-8"
           >
@@ -192,7 +204,7 @@ export function TurmaTab({
       />
 
       <Dialog open={addStudentDialogOpen} onOpenChange={setAddStudentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); addStudentButtonRef.current?.focus({ preventScroll: true }); }}>
           <DialogHeader>
             <DialogTitle>Adicionar aluno à turma {turma.name}</DialogTitle>
             <DialogDescription>O aluno será incluído diretamente nesta turma. As atividades já cadastradas aparecerão como pendentes.</DialogDescription>
