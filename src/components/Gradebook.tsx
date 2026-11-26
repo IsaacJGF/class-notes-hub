@@ -667,10 +667,10 @@ export function Gradebook({
           <div className="mt-0.5 text-sm text-muted-foreground">{getTermLabel(term)} · cinco avaliações de até 20 pontos e pontuação extra</div>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <button onClick={openConfiguration} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold shadow-sm transition hover:bg-muted sm:flex-none">
+          <button onClick={openConfiguration} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-button border border-input bg-card px-3 py-2 text-xs font-semibold transition hover:bg-muted sm:flex-none">
             <Settings2 size={14} /> Configurar divisões
           </button>
-          <button onClick={exportWorkbook} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition hover:opacity-90 sm:flex-none" style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}>
+          <button onClick={exportWorkbook} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-button bg-action px-3 py-2 text-xs font-semibold text-action-foreground transition hover:bg-action/90 sm:flex-none">
             <Download size={14} /> Exportar Excel
           </button>
         </div>
@@ -897,7 +897,7 @@ export function Gradebook({
                           aria-label={`Nome da ramificação ${component.name}`}
                           value={component.name}
                           onChange={(event) => updateDraft(component.id, { name: event.currentTarget.value })}
-                          className="min-w-0 rounded border border-border bg-background px-2 py-1.5 text-sm"
+                          className="min-w-0 rounded-md border border-input bg-card px-2 py-1.5 text-sm"
                         />
                         {block.maxPoints === null ? (
                           <input
@@ -908,7 +908,7 @@ export function Gradebook({
                             placeholder="Sem limite"
                             aria-label={`Limite de ${component.name}; vazio significa sem limite`}
                             onChange={(event) => changeDraftMaximum(component, event.currentTarget.value)}
-                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
+                            className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-sm"
                           />
                         ) : blockComponents.length === 1 ? (
                           <div className="rounded bg-muted px-2 py-1.5 text-center text-sm">20 pts</div>
@@ -920,7 +920,7 @@ export function Gradebook({
                             value={component.maxPoints ?? 0}
                             aria-label={`Limite de ${component.name}`}
                             onChange={(event) => changeDraftMaximum(component, event.currentTarget.value)}
-                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
+                            className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-sm"
                           />
                         )}
                         <button
@@ -939,8 +939,8 @@ export function Gradebook({
             })}
           </div>
           <DialogFooter>
-            <button onClick={() => setConfigOpen(false)} className="rounded border border-border px-4 py-2 text-sm">Cancelar</button>
-            <button onClick={saveConfiguration} className="rounded px-4 py-2 text-sm font-semibold" style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>Salvar divisões</button>
+            <button onClick={() => setConfigOpen(false)} className="min-h-11 rounded-button border border-input bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted sm:min-h-9">Cancelar</button>
+            <button onClick={saveConfiguration} className="min-h-11 rounded-button px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 sm:min-h-9 bg-action">Salvar divisões</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
