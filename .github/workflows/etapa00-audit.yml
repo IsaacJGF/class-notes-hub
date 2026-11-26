@@ -1,7 +1,7 @@
-name: Etapa 00 - baseline isolada
+name: PR 01 - auditoria Soft Blue
 on:
   push:
-    branches: [audit/etapa00-4d4faf1]
+    branches: [audit/pr01-soft-blue]
 permissions:
   contents: read
 jobs:
@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 4d4faf185853ab1d744bf91e62720129814f21d8
+          ref: cafa499c492cc6246033766111d4a06c575d4501
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -39,6 +39,7 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
+          test "$(git rev-parse HEAD)" = cafa499c492cc6246033766111d4a06c575d4501
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
       - name: Browser audit
@@ -60,6 +61,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: etapa00-4d4faf1
+          name: pr01-soft-blue-cafa499
           path: evidence/
           retention-days: 14
