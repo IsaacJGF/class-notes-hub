@@ -227,19 +227,49 @@ await run('pr06-historico-geral',async()=>{
 const openPr07Home=async()=>{await p.bringToFront();await p.goto(url+'/?audit=pr07#/');await p.reload({waitUntil:'load'});await p.getByRole('navigation',{name:'Cadastro e turmas'}).waitFor();await p.evaluate(()=>document.fonts.ready);await p.evaluate(()=>window.scrollTo(0,0));await p.waitForFunction(()=>document.hasFocus()&&document.activeElement===document.body);};
 let pr07Phase='';
 const runPr07=async(name,fn)=>run(name,async()=>{pr07Phase='initialization';try{return await fn();}catch(e){const diag=await p.evaluate(()=>({url:location.href,active:document.activeElement?.outerHTML?.slice(0,500),main:!!document.querySelector('#main-content'),dialog:!!document.querySelector('[role=dialog]'),width:document.documentElement.scrollWidth}));throw Error(pr07Phase+' / '+String(e)+' / '+JSON.stringify(diag));}});
-await runPr07('pr07-teclado-foco',async()=>{
+await runPr07('pr07-teclado-salto',async()=>{
  const before=await storage();await openPr07Home();assert.equal(await p.locator('html').getAttribute('lang'),'pt-BR');pr07Phase='skip link';const initialUrl=p.url();
  const skip=p.getByRole('link',{name:'Ir para o conteúdo principal'});const tabTrace=[];
  const firstTabbable=await p.evaluate(()=>[...document.querySelectorAll('a[href],button,input,select,textarea,[tabindex]')].find(e=>e.tabIndex>=0&&!e.matches(':disabled')&&!e.closest('[inert]')&&e.getClientRects().length>0)?.textContent?.trim());assert.equal(firstTabbable,'Ir para o conteúdo principal');
  // Browser chrome may consume a Tab after navigation. Only retry while no page control has focus.
  for(let i=0;i<3;i++){await p.keyboard.press('Tab');await p.waitForTimeout(80);const state=await p.evaluate(()=>({tag:document.activeElement?.tagName,text:document.activeElement?.textContent?.trim().slice(0,100),href:document.activeElement?.getAttribute('href')}));tabTrace.push(state);if(await skip.evaluate(e=>e===document.activeElement))break;assert(['BODY','HTML'].includes(state.tag),'Unexpected first keyboard target '+JSON.stringify(tabTrace));}
- assert(await skip.evaluate(e=>e===document.activeElement),'Skip link not reachable '+JSON.stringify(tabTrace));await shot('pr07-link-foco');await p.keyboard.press('Enter');await p.waitForFunction(()=>document.activeElement?.id==='main-content');assert.equal(p.url(),initialUrl,'Skip link must preserve route');await shot('pr07-salto-conteudo');pr07Phase='navigation and tabs';
- const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});const turma=nav.getByRole('button',{name:'Turma Fictícia A',exact:true});await turma.focus();await p.keyboard.press('Enter');assert.equal(await turma.getAttribute('aria-pressed'),'true');
- const geral=p.getByRole('tab',{name:'Geral',exact:true});await geral.focus();await p.keyboard.press('ArrowRight');await p.getByRole('tab',{name:'AEP',exact:true,selected:true}).waitFor();assert(await p.getByRole('tab',{name:'AEP',exact:true}).evaluate(e=>e===document.activeElement));await p.keyboard.press('ArrowRight');await p.getByRole('tab',{name:'AL',exact:true,selected:true}).waitFor();assert(await p.getByRole('tab',{name:'AL',exact:true}).evaluate(e=>e===document.activeElement));
- pr07Phase='grade focus and Tab';const region=p.getByRole('region',{name:'Planilha de AL',exact:true});await region.waitFor();const grades=region.locator('input[data-spreadsheet-input]');await grades.first().focus();const outline=await grades.first().evaluate(e=>({width:getComputedStyle(e).outlineWidth,style:getComputedStyle(e).outlineStyle}));assert.equal(outline.style,'solid');assert(parseFloat(outline.width)>=2);await shot('pr07-foco-nota');await p.keyboard.press('Tab');assert(await grades.nth(1).evaluate(e=>e===document.activeElement),'Tab must advance to next grade');
- pr07Phase='search focus return';await p.keyboard.press('Control+f');const search=p.getByRole('textbox',{name:'Pesquisar aluno',exact:true});await search.waitFor();await p.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Pesquisar aluno');await search.fill('Aluno Ficticio');await p.getByRole('status').filter({hasText:/[0-9]+\/[0-9]+/}).waitFor();await p.keyboard.press('Escape');await p.waitForFunction(()=>document.activeElement?.getAttribute('title')==='Pesquisar (Ctrl+F)');await shot('pr07-foco-pesquisa');
- pr07Phase='add modal return';const add=p.getByRole('button',{name:'Adicionar aluno',exact:true}).first();await add.focus();await p.keyboard.press('Enter');const dialog=p.getByRole('dialog');await dialog.waitFor();await p.keyboard.press('Tab');assert(await dialog.evaluate(e=>e.contains(document.activeElement)));await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await p.waitForFunction(()=>document.activeElement?.textContent?.trim()==='Adicionar aluno');
- pr07Phase='config modal return';const config=p.getByRole('button',{name:'Configurar divisões',exact:true});await config.focus();await p.keyboard.press('Enter');await dialog.waitFor();await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await p.waitForFunction(()=>document.activeElement?.textContent?.trim()==='Configurar divisões');assert.deepEqual(await storage(),before);return {skipLink:true,tabTrace,arrowTabs:true,gradeTab:true,searchReturn:true,addModalReturn:true,configModalReturn:true,outline};
+ assert(await skip.evaluate(e=>e===document.activeElement),'Skip link not reachable '+JSON.stringify(tabTrace));await shot('pr07-link-foco');await p.keyboard.press('Enter');await p.waitForFunction(()=>document.activeElement?.id==='main-content');assert.equal(p.url(),initialUrl,'Skip link must preserve route');await shot('pr07-salto-conteudo');assert.deepEqual(await storage(),before);return {skipLink:true,tabTrace,routePreserved:true};
+});
+
+const pr07Nav=()=>p.getByRole('navigation',{name:'Cadastro e turmas'});
+const pr07Blocks=()=>p.getByRole('tablist',{name:'Blocos de notas',exact:true});
+const pr07Block=(name)=>pr07Blocks().getByRole('tab',{name,exact:true});
+const pr07EnterClass=async()=>{await openPr07Home();const turma=pr07Nav().getByRole('button',{name:'Turma Fictícia A',exact:true});await turma.focus();await p.keyboard.press('Enter');await pr07Nav().getByRole('button',{name:'Turma Fictícia A',exact:true,pressed:true}).waitFor();await pr07Block('Geral').waitFor();};
+const pr07EnterAL=async()=>{await pr07EnterClass();await pr07Block('AL').click();const region=p.getByRole('region',{name:'Planilha de AL',exact:true});await region.waitFor();return region;};
+const assertFocused=async(locator,label)=>{await locator.waitFor({state:'visible'});const handle=await locator.elementHandle();await p.waitForFunction(e=>document.activeElement===e,handle,{timeout:3500});assert(await locator.evaluate(e=>document.activeElement===e),label);};
+await runPr07('pr07-teclado-abas',async()=>{
+ const before=await storage();pr07Phase='main tabs';await pr07EnterClass();const geral=pr07Block('Geral');await geral.focus();await p.keyboard.press('ArrowRight');
+ await pr07Blocks().getByRole('tab',{name:'AEP',exact:true,selected:true}).waitFor();await assertFocused(pr07Block('AEP'),'AEP main tab focus');
+ await p.keyboard.press('ArrowRight');await pr07Blocks().getByRole('tab',{name:'AL',exact:true,selected:true}).waitFor();await assertFocused(pr07Block('AL'),'AL main tab focus');
+ const nested=p.getByRole('tablist',{name:'Ramificações de AL',exact:true}).getByRole('tab',{name:'AL',exact:true});await nested.waitFor();assert.equal(await nested.getAttribute('aria-selected'),'true');assert.equal(await nested.evaluate(e=>e===document.activeElement),false);
+ await shot('pr07-foco-aba-al');await p.keyboard.press('ArrowLeft');await pr07Blocks().getByRole('tab',{name:'AEP',exact:true,selected:true}).waitFor();await assertFocused(pr07Block('AEP'),'reverse navigation');
+ assert.deepEqual(await storage(),before);return {classEnter:true,arrowRight:true,arrowLeft:true,nestedTabDistinguished:true};
+});
+await runPr07('pr07-teclado-notas',async()=>{
+ const before=await storage();pr07Phase='grade focus and Tab';const region=await pr07EnterAL();const grades=region.locator('input[data-spreadsheet-input]');assert(await grades.count()>=2);await grades.first().focus();await assertFocused(grades.first(),'first grade');const outline=await grades.first().evaluate(e=>({width:getComputedStyle(e).outlineWidth,style:getComputedStyle(e).outlineStyle}));assert.equal(outline.style,'solid');assert(parseFloat(outline.width)>=2);await shot('pr07-foco-nota');
+ await p.keyboard.press('Tab');await assertFocused(grades.nth(1),'Tab must advance to next grade');await p.keyboard.press('Shift+Tab');await assertFocused(grades.first(),'Shift+Tab must return to previous grade');
+ assert.deepEqual(await storage(),before);return {gradeTab:true,gradeShiftTab:true,outline};
+});
+await runPr07('pr07-teclado-pesquisa',async()=>{
+ const before=await storage();pr07Phase='search focus return';const region=await pr07EnterAL();await region.locator('input[data-spreadsheet-input]').first().focus();await p.keyboard.press('Control+f');
+ const toolbar=p.locator('.gradebook-search-toolbar:visible');const search=toolbar.getByRole('textbox',{name:'Pesquisar aluno',exact:true});await assertFocused(search,'search focus');await search.fill('Aluno Ficticio 03');const status=toolbar.getByRole('status',{name:/^1 de [0-9]+ alunos$/});await status.waitFor();assert.match(await status.textContent(),/^1\/[0-9]+$/);await shot('pr07-pesquisa-anuncio');
+ await p.keyboard.press('Escape');const button=toolbar.getByRole('button',{name:'Pesquisar',exact:true});await assertFocused(button,'search return');await shot('pr07-foco-pesquisa');
+ assert.deepEqual(await storage(),before);return {searchReturn:true,countAnnouncement:true};
+});
+await runPr07('pr07-teclado-modal-aluno',async()=>{
+ const before=await storage();pr07Phase='add modal return';await pr07EnterAL();
+ const add=p.locator('.class-context').getByRole('button',{name:'Adicionar aluno',exact:true});await add.focus();await p.keyboard.press('Enter');const dialog=p.getByRole('dialog',{name:/^Adicionar aluno à turma/});await dialog.waitFor();await p.keyboard.press('Tab');assert(await dialog.evaluate(e=>e.contains(document.activeElement)));await shot('pr07-modal-aluno-foco');await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await assertFocused(add,'add dialog trigger return');
+ assert.deepEqual(await storage(),before);return {addModalReturn:true,focusContained:true};
+});
+await runPr07('pr07-teclado-modal-config',async()=>{
+ const before=await storage();pr07Phase='config modal return';await pr07EnterAL();
+ const config=p.getByRole('button',{name:'Configurar divisões',exact:true});await config.focus();await p.keyboard.press('Enter');const dialog=p.getByRole('dialog',{name:/^Configurar divisões/});await dialog.waitFor();await p.keyboard.press('Tab');assert(await dialog.evaluate(e=>e.contains(document.activeElement)));await shot('pr07-modal-config-foco');await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await assertFocused(config,'config dialog trigger return');
+ assert.deepEqual(await storage(),before);return {configModalReturn:true,focusContained:true};
 });
 await runPr07('pr07-movimento-contraste',async()=>{
  const before=await storage();await openPr07Home();await p.getByRole('navigation',{name:'Cadastro e turmas'}).getByRole('button',{name:'Turma Fictícia A',exact:true}).click();await p.emulateMedia({reducedMotion:'reduce'});
