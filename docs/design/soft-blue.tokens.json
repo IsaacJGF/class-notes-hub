@@ -1,0 +1,56 @@
+{
+  "status": "approved-prototype",
+  "theme": "Soft Blue",
+  "baseline": "4d4faf185853ab1d744bf91e62720129814f21d8",
+  "date": "2026-11-25",
+  "colors": {
+    "brand": "#354F78",
+    "action": "#345D9D",
+    "background": "#EEF4FB",
+    "surface": "#FFFFFF",
+    "foreground": "#263D59",
+    "mutedForeground": "#526782",
+    "border": "#D4E1F0",
+    "tableHeader": "#E7EFFA",
+    "selection": "#DEEBFF",
+    "active": "#DFEAFB",
+    "globalHeader": "#E0EBF9",
+    "globalHeaderForeground": "#263D59",
+    "lowGrade": "#9B3342",
+    "lowGradeBackground": "#FFF2F4",
+    "actionForeground": "#FFFFFF",
+    "success": "#166534",
+    "successBackground": "#E8F6EB",
+    "onTimeBackground": "#ECF8EE",
+    "late": "#92400E",
+    "lateBackground": "#FFF2D9",
+    "pending": "#9C303E",
+    "pendingBackground": "#FFF1F2"
+  },
+  "prototypeDimensionsPx": {
+    "globalHeader": 49,
+    "navigation": 39,
+    "desktopTableRow": 34,
+    "mobileTableRow": 36,
+    "gradeInputHeight": 26,
+    "defaultRadius": 8,
+    "buttonRadius": 6,
+    "cellRadius": 5,
+    "tableRadius": 7,
+    "modalRadius": 12,
+    "tooltipRadius": 9
+  },
+  "typography": {
+    "family": "Inter, system-ui, -apple-system, Segoe UI, sans-serif",
+    "bodyPx": 14,
+    "tablePx": 13,
+    "tableHeaderPx": 12,
+    "secondaryPx": 12,
+    "numeric": "tabular-nums"
+  },
+  "notes": [
+    "Valores extraídos do protótipo aprovado, não estilos já implementados.",
+    "A validação dos alvos interativos e contraste de bordas/foco depende dos PRs.",
+    "Preservar tokens HSL existentes e compatibilidade no PR 01; não trocar fontes, framework, dependências ou lógica."
+  ]
+}
