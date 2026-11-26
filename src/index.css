@@ -378,3 +378,33 @@
   .registration-field, .registration-action { min-height: 44px; font-size: 16px; }
   .activity-form .registration-field { font-size: 14px; }
 }
+
+/* PR 06: only the reachable Geral overview. Preserve PR04 spreadsheet behavior. */
+.gradebook-workspace .overview-table th[data-overview-column] { min-width: 72px; }
+.gradebook-workspace .overview-table th[data-overview-column="final"] {
+  min-width: 100px;
+  background: hsl(var(--surface-active));
+  color: hsl(var(--brand));
+  border-left: 1px solid hsl(var(--border-subtle));
+}
+.gradebook-workspace .overview-table td[data-overview-column="extra"] { background-color: hsl(var(--surface-default)); }
+.gradebook-workspace .overview-table td[data-overview-column="final"] {
+  border-left: 1px solid hsl(var(--border-subtle));
+  background-color: hsl(var(--surface-table-header));
+  font-size: 14px;
+}
+.gradebook-workspace .overview-table td[data-spreadsheet-selected="true"] { background-color: hsl(var(--surface-selection)); }
+.gradebook-workspace .overview-table .overview-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.gradebook-workspace .overview-table td[data-overview-below="true"] .overview-value { color: hsl(var(--status-low-grade)); }
+@media (max-width: 639px) {
+  .overview-legend { flex-basis: 100%; }
+  .gradebook-workspace .overview-table th[data-overview-column] { min-width: 64px; }
+  .gradebook-workspace .overview-table th[data-overview-column="final"] { min-width: 90px; }
+}

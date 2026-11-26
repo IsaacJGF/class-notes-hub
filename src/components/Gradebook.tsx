@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
-import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, MoreHorizontal, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, Download, History, MoreHorizontal, Settings2, Plus, Trash2, Table2, Calculator, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { AcademicTerm, Activity, ActivityRecord, EvaluationBlockId, EvaluationComponent, SchoolData, Student, Turma } from "@/types";
@@ -691,25 +691,29 @@ export function Gradebook({
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="mt-0 space-y-1.5">
+          <TabsContent value="overview" className="gradebook-overview mt-0 space-y-1.5">
             <div className="overflow-clip rounded-table border border-border bg-card">
-              <div className="flex flex-wrap items-center gap-x-3 border-b border-border px-2.5 py-1.5">
+              <div className="overview-heading flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2.5 py-1.5">
                 <h3 className="text-sm font-semibold text-brand">Resumo geral das notas</h3>
-                <p className="text-xs text-muted-foreground">Selecione células ou colunas e use Ctrl+C para copiar. Valores calculados.</p>
+                <p className="text-xs text-muted-foreground">Valores calculados · Ctrl+C para copiar</p>
+                <div className="overview-legend flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:ml-auto">
+                  <span className="inline-flex items-center gap-1"><ArrowDown size={12} className="text-status-low-grade" aria-hidden="true" /> Abaixo da média: 14 por bloco / 70 na final</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-input bg-surface-table" aria-hidden="true" /> Nota final inclui P.E.</span>
+                </div>
               </div>
               <div className="gradebook-table-scroll gradebook-overview-scroll" role="region" aria-label="Planilha geral de notas" tabIndex={0}>
-                <table className="school-table gradebook-table min-w-full">
+                <table className="school-table gradebook-table overview-table min-w-full" aria-label="Notas consolidadas por aluno">
                   <thead><tr>
-                    <th><button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button></th>
-                    {componentsByBlock.map((block, blockIndex) => <th key={block.id} className="text-center">
+                    <th scope="col"><button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button></th>
+                    {componentsByBlock.map((block, blockIndex) => <th key={block.id} scope="col" data-overview-column={block.id === "PE" ? "extra" : "block"} className="text-center">
                       <button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={blockIndex + 1} data-spreadsheet-row-count={students.length} title={`Selecionar a coluna ${block.label}`}>
-                        {block.label}<span className="mt-0.5 block text-[10px] font-normal normal-case opacity-75">{block.maxPoints === null ? "extra" : "/ 20"}</span>
+                        {block.label}<span className="block text-[11px] font-normal leading-tight text-muted-foreground">{block.maxPoints === null ? "extra" : "/ 20"}</span>
                       </button>
                     </th>)}
-                    <th className="text-center"><button type="button" className="w-full text-center" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={componentsByBlock.length + 1} data-spreadsheet-row-count={students.length} title="Selecionar a coluna da nota final">Nota final</button></th>
+                    <th scope="col" data-overview-column="final" className="text-center"><button type="button" className="w-full text-center font-semibold" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={componentsByBlock.length + 1} data-spreadsheet-row-count={students.length} title="Selecionar a coluna da nota final">Nota final</button></th>
                   </tr></thead>
                   <tbody>{students.length === 0 ? (
-                    <tr><td colSpan={componentsByBlock.length + 2} className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</td></tr>
+                    <tr><td colSpan={componentsByBlock.length + 2}><div className="school-empty-state" role="status"><Table2 size={22} aria-hidden="true" /><p className="font-semibold text-foreground">Nenhum aluno encontrado.</p><p>Confira a pesquisa ou cadastre alunos nesta turma.</p></div></td></tr>
                   ) : students.map((student, rowIndex) => {
                     const summary = gradesByStudent.get(student.id)!;
                     const history = historyByStudent.get(student.id) ?? [];
@@ -780,21 +784,29 @@ export function Gradebook({
                               key={block.id}
                               {...spreadsheetCellAttributes(overviewGridId, rowIndex, blockIndex + 1, formatPoints(summary.blockTotals[block.id]))}
                               data-grade-kind="calculated"
-                              className={`text-center font-medium ${belowAverage ? "font-semibold text-status-low-grade" : ""}`}
+                              data-overview-column={block.id === "PE" ? "extra" : "block"}
+                              data-overview-below={belowAverage ? "true" : undefined}
+                              className={`text-center font-medium ${belowAverage ? "text-status-low-grade" : ""}`}
                               title={belowAverage ? "Abaixo da média de 14 pontos neste bloco" : undefined}
                             >
-                              {formatPoints(summary.blockTotals[block.id])}
+                              <span className="overview-value">
+                                {belowAverage && <><ArrowDown size={11} aria-hidden="true" className="shrink-0" /><span className="sr-only">Abaixo da média: </span></>}
+                                {formatPoints(summary.blockTotals[block.id])}
+                              </span>
                             </td>;
                           })}
                           <td
                             {...spreadsheetCellAttributes(overviewGridId, rowIndex, componentsByBlock.length + 1, formatPoints(summary.finalTotal))}
                             data-grade-kind="total"
+                            data-overview-column="final"
+                            data-overview-below={summary.finalTotal < 70 ? "true" : undefined}
                             className="text-center"
                           >
                             <span
-                              className={`inline-flex min-w-14 justify-center rounded-cell px-2 py-0.5 font-semibold ${summary.finalTotal < 70 ? "bg-status-low-grade-bg text-status-low-grade" : "text-brand"}`}
+                              className={`overview-value min-w-14 rounded-cell px-1.5 py-0.5 font-semibold ${summary.finalTotal < 70 ? "bg-status-low-grade-bg text-status-low-grade" : "text-brand"}`}
                               title={summary.finalTotal < 70 ? "Nota final abaixo da média de 70 pontos" : undefined}
                             >
+                              {summary.finalTotal < 70 && <><ArrowDown size={11} aria-hidden="true" className="shrink-0" /><span className="sr-only">Abaixo da média: </span></>}
                               {formatPoints(summary.finalTotal)}
                             </span>
                           </td>
@@ -802,7 +814,7 @@ export function Gradebook({
                         {historyExpanded && (
                           <tr>
                             <td colSpan={componentsByBlock.length + 2} className="bg-muted/20 p-3 sm:p-4">
-                              <div className="space-y-4 rounded-lg border border-border bg-card p-3 sm:p-4">
+                              <div className="space-y-3 rounded-card border border-border bg-card p-3">
                                 <div>
                                   <p className="text-sm font-semibold">Histórico de atividades de {student.name}</p>
                                   <p className="mt-0.5 text-xs text-muted-foreground">Registros mantidos da(s) turma(s) anterior(es). As atividades da turma atual continuam na planilha normal.</p>
@@ -815,7 +827,7 @@ export function Gradebook({
                                     <div className="grid gap-2 md:grid-cols-2">
                                       {entries.map((entry) => {
                                         const late = isActivityLate(entry.activity, entry.record);
-                                        const statusClass = !entry.record.done ? "border-destructive/20 bg-destructive/5 text-destructive" : late ? "border-amber-300/60 bg-amber-50 text-amber-700" : "border-emerald-300/60 bg-emerald-50 text-emerald-700";
+                                        const statusClass = !entry.record.done ? "border-transparent bg-status-pending-bg text-status-pending" : late ? "border-transparent bg-[hsl(var(--status-late-bg))] text-[hsl(var(--status-late))]" : "border-transparent bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success))]";
                                         return (
                                           <div key={entry.activity.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
                                             <div className="min-w-0">
