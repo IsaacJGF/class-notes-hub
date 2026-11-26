@@ -28,6 +28,17 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-background">
+      <a
+        href="#main-content"
+        className="school-skip-link"
+        onClick={(event) => {
+          // HashRouter owns the URL hash; move focus without changing the route.
+          event.preventDefault();
+          const main = document.getElementById("main-content");
+          main?.focus({ preventScroll: true });
+          main?.scrollIntoView({ block: "start", behavior: "instant" });
+        }}
+      >Ir para o conteúdo principal</a>
       {/* Header */}
       <header
         className="app-header flex min-h-[var(--height-header)] min-w-0 items-center gap-2 border-b border-border bg-surface-header px-3 py-1.5 sm:gap-3 sm:px-4"
@@ -83,7 +94,7 @@ const Index = () => {
 
       {/* Keep horizontal overflow inside the existing table wrappers; page scrolling allows
           the local search toolbar to remain sticky within its own gradebook panel. */}
-      <main className="min-w-0 flex-1">
+      <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
         {activeTab === "cadastro" && (
           <StudentRegistration
             data={school.data}

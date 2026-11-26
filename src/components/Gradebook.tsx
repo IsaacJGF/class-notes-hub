@@ -119,6 +119,7 @@ export function Gradebook({
   const spreadsheetSelectionRef = useRef<SpreadsheetSelection | null>(null);
   const spreadsheetDragging = useRef(false);
   const gradebookRef = useRef<HTMLElement | null>(null);
+  const configurationButtonRef = useRef<HTMLButtonElement>(null);
 
   const updateSpreadsheetSelection = (selection: SpreadsheetSelection | null) => {
     spreadsheetSelectionRef.current = selection;
@@ -674,7 +675,7 @@ export function Gradebook({
           <div className="text-xs leading-tight text-muted-foreground">{getTermLabel(term)} · cinco avaliações de até 20 pontos e pontuação extra</div>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <button onClick={openConfiguration} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-button sm:min-h-8 border border-input bg-card px-2.5 py-1 text-xs font-semibold transition hover:bg-muted sm:flex-none">
+          <button ref={configurationButtonRef} onClick={openConfiguration} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-button sm:min-h-8 border border-input bg-card px-2.5 py-1 text-xs font-semibold transition hover:bg-muted sm:flex-none">
             <Settings2 size={14} /> Configurar divisões
           </button>
           <button onClick={exportWorkbook} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-button sm:min-h-8 bg-action px-2.5 py-1 text-xs font-semibold text-action-foreground transition hover:bg-action/90 sm:flex-none">
@@ -738,7 +739,7 @@ export function Gradebook({
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
-                                    className="rounded-md p-1 text-muted-foreground opacity-60 transition hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:opacity-100"
+                                    className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:opacity-100"
                                     title={`Ações de ${student.name}`}
                                     aria-label={`Ações de ${student.name}`}
                                   >
@@ -891,7 +892,7 @@ export function Gradebook({
       />
 
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl" onCloseAutoFocus={(event) => { event.preventDefault(); configurationButtonRef.current?.focus({ preventScroll: true }); }}>
           <DialogHeader>
             <DialogTitle>Configurar divisões — {turma.name}</DialogTitle>
             <DialogDescription>

@@ -312,7 +312,7 @@ export function ActivitySummary({
               {activities.map((activity) => <th key={activity.id} className="sticky top-0 z-20 relative text-center" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "9rem" }}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button type="button" className="absolute right-0.5 top-0.5 z-10 rounded p-1 opacity-70 transition hover:bg-white/10 hover:opacity-100" title={`Opções da atividade ${activity.name}`} aria-label={`Opções da atividade ${activity.name}`}><MoreHorizontal size={15} /></button>
+                    <button type="button" className="absolute right-0.5 top-0.5 z-10 flex min-h-6 min-w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title={`Opções da atividade ${activity.name}`} aria-label={`Opções da atividade ${activity.name}`}><MoreHorizontal size={15} /></button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onSelect={() => setEditingActivity({ id: activity.id, name: activity.name })}><Pencil size={14} className="mr-2" />Renomear atividade</DropdownMenuItem>
@@ -362,8 +362,9 @@ export function ActivitySummary({
                             event.preventDefault();
                             setContextMenu({ x: event.clientX, y: event.clientY, studentId: student.id, activityId: activity.id });
                           }}
+                          aria-pressed={isDone}
                           aria-label={`${student.name}: ${activity.name} — ${getActivityStatusLabel(activity, record)}`}
-                          className="mx-auto flex h-7 w-8 items-center justify-center rounded-cell transition hover:bg-muted max-sm:h-8"
+                          className="mx-auto flex h-7 w-8 items-center justify-center rounded-cell transition-colors hover:bg-muted max-sm:h-8"
                         >
                           <StatusIcon
                             size={17}

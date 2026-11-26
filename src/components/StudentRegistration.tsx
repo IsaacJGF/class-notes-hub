@@ -277,7 +277,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
                                   <DropdownMenuTrigger asChild>
                                     <button
                                       type="button"
-                                      className="rounded-md p-1 text-muted-foreground opacity-60 transition hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:opacity-100"
+                                      className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:opacity-100"
                                       title={`Ações de ${student.name}`}
                                       aria-label={`Ações de ${student.name}`}
                                     >

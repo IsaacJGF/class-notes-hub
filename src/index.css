@@ -412,3 +412,52 @@
   .gradebook-workspace .overview-table th[data-overview-column] { min-width: 64px; }
   .gradebook-workspace .overview-table th[data-overview-column="final"] { min-width: 90px; }
 }
+
+/* PR 07: short, non-displacing feedback. Never animate geometry of score cells. */
+.school-skip-link {
+  position: absolute;
+  z-index: 100;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-button);
+  background: hsl(var(--action));
+  color: hsl(var(--action-text));
+  transform: translateY(calc(-100% - 16px));
+}
+.school-skip-link:focus { transform: none; }
+:where(button, input, select, textarea, summary, a) {
+  transition-duration: var(--motion-fast);
+  transition-timing-function: ease-out;
+}
+.gradebook-workspace .gradebook-table :is(button, [data-spreadsheet-cell]):focus-visible {
+  outline: var(--focus-width) solid hsl(var(--focus));
+  outline-offset: -2px;
+}
+.gradebook-table-scroll:focus-visible, .nav-scroll:focus-visible {
+  outline: var(--focus-width) solid hsl(var(--focus));
+  outline-offset: -2px;
+}
+.gradebook-workspace .gradebook-score { transition-property: none; }
+.gradebook-workspace .gradebook-table thead button {
+  min-height: 24px;
+}
+.gradebook-workspace .gradebook-table tbody td {
+  transition-property: none;
+}
+:where(button, [role="button"]):not(:disabled):active {
+  filter: brightness(.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight !important; }
+  [data-spreadsheet-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+}
