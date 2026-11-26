@@ -236,6 +236,7 @@ export function ActivitySummary({
           <span className="text-xs font-medium text-muted-foreground">Data</span>
           <input
             type="date"
+            aria-label="Data da atividade"
             required
             value={activityDate}
             onChange={(event) => setActivityDate(event.currentTarget.value)}
@@ -246,6 +247,7 @@ export function ActivitySummary({
             <label className="flex min-w-0 flex-col gap-1">
               <span className="text-xs font-medium text-muted-foreground">Prazo</span>
               <select
+                aria-label="Prazo"
                 value={deadlineMode}
                 onChange={(event) => setDeadlineMode(event.currentTarget.value as DeadlineMode)}
                 className="registration-field min-w-0 w-full"
@@ -257,10 +259,10 @@ export function ActivitySummary({
             </label>
             {deadlineMode === "date" && <label className="activity-extra flex min-w-0 flex-col gap-1">
               <span className="text-xs font-medium text-muted-foreground">Data limite</span>
-              <input type="date" min={activityDate} required value={deadlineDate} onChange={(event) => setDeadlineDate(event.currentTarget.value)} className="registration-field min-w-0 w-full" />
+              <input type="date" aria-label="Data limite" min={activityDate} required value={deadlineDate} onChange={(event) => setDeadlineDate(event.currentTarget.value)} className="registration-field min-w-0 w-full" />
             </label>}
             {deadlineMode === "days" && <label className="activity-extra flex min-w-0 flex-wrap items-center gap-2 text-xs">
-              <input type="number" min={1} value={deadlineDays} onChange={(event) => setDeadlineDays(Math.max(1, Number(event.currentTarget.value) || 1))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm" />
+              <input type="number" aria-label="Dias após a atividade" min={1} value={deadlineDays} onChange={(event) => setDeadlineDays(Math.max(1, Number(event.currentTarget.value) || 1))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm" />
               dia(s) após a data da atividade
             </label>}
             {deadlineMode !== "none" && computeDeadline() && <span className="activity-preview text-xs text-muted-foreground" aria-live="polite">Vence em {formatDate(computeDeadline()!)}</span>}
@@ -278,7 +280,7 @@ export function ActivitySummary({
         <div className="flex flex-wrap items-start gap-3 border-t border-warning-border bg-card px-3 py-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             Alertar abaixo de
-            <input type="number" min={0} max={100} value={activityThreshold} onChange={(event) => setActivityThreshold(Math.max(0, Math.min(100, Number(event.currentTarget.value) || 0)))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm text-foreground" />
+            <input type="number" aria-label="Limite de aproveitamento (%)" min={0} max={100} value={activityThreshold} onChange={(event) => setActivityThreshold(Math.max(0, Math.min(100, Number(event.currentTarget.value) || 0)))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm text-foreground" />
             %
           </label>
           <div className="max-h-40 min-w-0 flex-1 overflow-auto text-xs text-muted-foreground"><div className="flex flex-wrap gap-1.5">

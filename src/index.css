@@ -366,7 +366,7 @@
 .activity-form { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; align-items: end; }
 .activity-form .activity-name, .activity-form .activity-extra, .activity-form .activity-preview, .activity-form .activity-submit { grid-column: 1 / -1; }
 .activity-form .activity-preview { min-width: 0; }
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .activity-form { grid-template-columns: minmax(0,2fr) minmax(130px,1fr) minmax(140px,1fr) auto; }
   .activity-form .activity-name { grid-column: 1; }
   .activity-form .activity-submit { grid-column: 4; grid-row: 1; }
