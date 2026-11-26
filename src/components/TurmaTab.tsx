@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { AcademicTerm, Activity, ActivityRecord, EvaluationComponent, SchoolData, Turma } from "@/types";
 import { Search, UserPlus, X } from "lucide-react";
 import { matchesAccentAware } from "@/lib/textSearch";
@@ -48,12 +48,12 @@ export function TurmaTab({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const addStudentButtonRef = useRef<HTMLButtonElement>(null);
-  const closeSearch = () => {
+  const closeSearch = useCallback(() => {
     const wasFocused = searchInputRef.current?.parentElement?.contains(document.activeElement);
     setShowSearch(false);
     setSearchQuery("");
     if (wasFocused) requestAnimationFrame(() => searchButtonRef.current?.focus({ preventScroll: true }));
-  };
+  }, []);
 
   const focusAndSelectSearchInput = () => {
     setTimeout(() => {
@@ -85,7 +85,7 @@ export function TurmaTab({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showSearch]);
+  }, [showSearch, closeSearch]);
 
   const allTurmaStudents = useMemo(
     () => data.students
