@@ -1,7 +1,7 @@
-name: PR 04 - auditoria de planilhas Soft Blue
+name: PR 05 - auditoria de cards e cadastro Soft Blue
 on:
   push:
-    branches: [audit/pr04-soft-blue]
+    branches: [audit/pr05-soft-blue]
 permissions:
   contents: read
 jobs:
@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: bc2180f08e2d86c15c1f37e21341f7949f7a3be5
+          ref: 7fc36e6c1b5c99bdec686c937ba802f626702852
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
-          test "$(git rev-parse HEAD)" = bc2180f08e2d86c15c1f37e21341f7949f7a3be5
+          test "$(git rev-parse HEAD)" = 7fc36e6c1b5c99bdec686c937ba802f626702852
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
           grep -qx "build=0" ../evidence/status.txt && grep -qx "test=0" ../evidence/status.txt
@@ -62,6 +62,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr04-soft-blue-bc2180f-reteste2
+          name: pr05-soft-blue-7fc36e6
           path: evidence/
           retention-days: 14

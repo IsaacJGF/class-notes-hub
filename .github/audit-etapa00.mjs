@@ -125,6 +125,40 @@ await run('pr03-csv',async()=>{
   const after=await storage();assert.equal(after.students.length,before.students.length+1);assert.equal(after.students.filter(x=>x.name==='Aluno CSV Fictício').length,1);assert.equal(after.turmas.length,before.turmas.length);await shot('pr03-csv-sucesso');
   await dialog.getByRole('button',{name:'Concluir',exact:true}).click();await dialog.waitFor({state:'hidden'});await p.getByRole('button',{name:'Importar CSV',exact:true}).click();await dialog.waitFor();await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});return {validImported:1,invalidIgnored:1,existingClassReused:true,escape:true};
 });
+await run('pr05-cadastro-filtros',async()=>{
+ await p.getByRole('navigation',{name:'Cadastro e turmas'}).getByRole('button',{name:'Cadastro',exact:true}).click();
+ await p.evaluate(()=>window.scrollTo(0,0));await shot('pr05-cadastro');
+ const before=await storage();
+ const turmaForm=p.getByRole('form',{name:'Cadastrar turma',exact:true});const turmaName=turmaForm.getByRole('textbox',{name:'Nome da turma'});
+ await turmaName.fill('Turma Fictícia A');await turmaForm.getByRole('button',{name:'Adicionar',exact:true}).click();await p.getByText('Turma já existe.',{exact:true}).waitFor();assert.equal(await turmaName.getAttribute('aria-invalid'),'true');assert.equal((await storage()).turmas.length,before.turmas.length);await shot('pr05-turma-duplicada');
+ await turmaName.fill('Turma Auditoria C');await turmaForm.getByRole('button',{name:'Adicionar',exact:true}).click();await p.getByRole('navigation',{name:'Cadastro e turmas'}).getByRole('button',{name:'Turma Auditoria C',exact:true}).waitFor();
+ const newClass=(await storage()).turmas.find(x=>x.name==='Turma Auditoria C');assert(newClass);
+ const alunoForm=p.getByRole('form',{name:'Cadastrar aluno',exact:true});const add=alunoForm.getByRole('button',{name:'Adicionar',exact:true});assert(await add.isDisabled());await alunoForm.getByRole('textbox',{name:'Nome do aluno'}).fill('Aluno Auditoria Áureo');await alunoForm.getByLabel('Turma do aluno').selectOption(newClass.id);assert(await add.isEnabled());await add.click();await p.getByText('Aluno Auditoria Áureo',{exact:true}).waitFor();
+ const after=await storage();assert.equal(after.students.length,before.students.length+1);assert.equal(after.turmas.length,before.turmas.length+1);assert.equal(after.students.find(x=>x.name==='Aluno Auditoria Áureo').turma,newClass.name);
+ const filter=p.getByLabel('Filtrar alunos por turma');await filter.selectOption(newClass.name);assert.equal(await p.locator('.registration-table tbody tr').count(),2);
+ const search=p.getByRole('searchbox',{name:'Pesquisar aluno por nome'});await search.fill('aureo');assert.equal(await p.locator('.registration-table tbody tr').count(),2);await shot('pr05-filtro');
+ await search.fill('nome inexistente 123');await p.getByText('Nenhum aluno encontrado com esses filtros.',{exact:true}).waitFor();await shot('pr05-cadastro-vazio');await p.keyboard.press('Escape');assert.equal(await search.inputValue(),'');await filter.selectOption('all');
+ assert((await p.evaluate(()=>document.documentElement.scrollWidth))<=width+1,'cadastro overflow');return {duplicateRejected:true,classCreated:true,studentCreated:true,accentSearch:true,emptyState:true};
+});
+await run('pr05-atividades-prazos',async()=>{
+ const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});await nav.getByRole('button',{name:'Turma Auditoria C',exact:true}).click();await tab('AEP');
+ await p.getByText('Ainda não há atividades neste trimestre.',{exact:true}).waitFor();await shot('pr05-atividades-vazio');
+ const form=p.getByRole('form',{name:'Cadastrar atividade'});const name=form.getByRole('textbox',{name:'Nome da atividade'});const date=form.locator('input[type=date]').first();const deadline=form.getByLabel('Prazo',{exact:true});const add=form.getByRole('button',{name:'Adicionar atividade'});
+ const before=await storage();const cls=before.turmas.find(x=>x.name==='Turma Auditoria C');const student=before.students.find(x=>x.name==='Aluno Auditoria Áureo');assert(cls&&student);
+ assert(await add.isDisabled());await p.evaluate(()=>window.scrollTo(0,0));const box=await form.boundingBox();await shot('pr05-formulario-padrao');const results=[];
+ for(const [mode,title,expected] of [['none','Auditoria sem prazo',null],['date','Auditoria data específica','2026-11-28'],['days','Auditoria prazo em dias','2026-11-30']]){
+   await name.fill(title);await date.fill('2026-11-25');await deadline.selectOption(mode);
+   if(mode==='date'){assert(await add.isDisabled());await form.getByLabel('Data limite',{exact:true}).fill(expected);}
+   if(mode==='days'){await form.locator('input[type=number]').fill('5');}
+   if(expected){await form.getByText('Vence em '+expected.split('-').reverse().join('/'),{exact:true}).waitFor();}
+   assert(await add.isEnabled());await shot('pr05-formulario-'+mode);await add.click();await p.waitForFunction(({id,title})=>JSON.parse(localStorage.getItem('school_control_data')).activities.some(x=>x.turmaId===id&&x.name===title),{id:cls.id,title});
+   const state=await storage();const activity=state.activities.find(x=>x.turmaId===cls.id&&x.name===title);assert.equal(activity.deadline??null,expected);assert.equal(activity.date,'2026-11-25');assert.equal(activity.term,1);assert(state.activityRecords.some(r=>r.studentId===student.id&&r.activityId===activity.id&&!r.done));results.push({mode,deadline:activity.deadline??null});
+ }
+ assert.equal((await storage()).activities.length,before.activities.length+3);assert((await p.evaluate(()=>document.documentElement.scrollWidth))<=width+1,'atividade overflow');await shot('pr05-atividades-criadas');return {formHeight:box.height,results,pendingRecords:true};
+});
+await run('pr05-alertas',async()=>{
+ const alert=p.locator('.activity-alerts');await alert.waitFor({state:'visible'});await alert.locator('summary').click();await alert.getByText(/Aluno Auditoria Áureo/).waitFor();await shot('pr05-alerta-expandido');const input=alert.locator('input[type=number]');assert.equal(await input.inputValue(),'50');await alert.locator('summary').click();assert.equal(await alert.getAttribute('open'),null);return {expanded:true,thresholdPreserved:true};
+});
 results.push({tag,name:'pageerrors',status:errors.length?'fail':'pass',errors});flush();await context.close();
 }}finally{await browser.close();flush()}
 if(results.some(r=>r.status==='fail'))process.exitCode=1;
