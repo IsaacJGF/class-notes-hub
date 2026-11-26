@@ -324,3 +324,57 @@
   .gradebook-workspace .gradebook-activity tbody td:first-child { white-space: normal; overflow-wrap: anywhere; }
   .gradebook-workspace .gradebook-table td[data-spreadsheet-column="0"] span { white-space: normal; }
 }
+
+/* PR 05: cards and forms, scoped to registration and activities. */
+.registration-card { border-radius: var(--radius-card); }
+.registration-card .section-card-header {
+  background: hsl(var(--surface-default));
+  padding: 10px 12px;
+  align-items: center;
+}
+.registration-card .section-card-title { color: hsl(var(--brand)); font-size: var(--text-body); }
+.registration-field {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid hsl(var(--border-control));
+  border-radius: var(--radius-field);
+  background: hsl(var(--surface-default));
+  color: hsl(var(--text-main));
+  font-size: var(--text-body);
+}
+.registration-field:focus-visible { outline: 2px solid hsl(var(--focus)); outline-offset: 1px; }
+.registration-field::placeholder { color: hsl(var(--text-muted)); }
+.registration-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: var(--radius-button);
+  background: hsl(var(--action));
+  color: hsl(var(--action-text));
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.registration-action:hover:not(:disabled) { background: hsl(var(--action) / .9); }
+.registration-table thead th { text-transform: none; letter-spacing: normal; padding: 6px 10px; }
+.registration-table tbody td { padding: 4px 10px; }
+.registration-table tbody .registration-group td { background: hsl(var(--surface-table-header)); padding: 6px 10px; }
+.school-empty-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; text-align: center; color: hsl(var(--text-muted)); font-size: var(--text-table); }
+.school-empty-state > svg { color: hsl(var(--action)); }
+.activity-form { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; align-items: end; }
+.activity-form .activity-name, .activity-form .activity-extra, .activity-form .activity-preview, .activity-form .activity-submit { grid-column: 1 / -1; }
+.activity-form .activity-preview { min-width: 0; }
+@media (min-width: 1024px) {
+  .activity-form { grid-template-columns: minmax(0,2fr) minmax(130px,1fr) minmax(140px,1fr) auto; }
+  .activity-form .activity-name { grid-column: 1; }
+  .activity-form .activity-submit { grid-column: 4; grid-row: 1; }
+  .activity-form .activity-extra { grid-column: 1 / 3; grid-row: 2; }
+  .activity-form .activity-preview { grid-column: 3 / -1; grid-row: 2; align-self: center; }
+}
+@media (max-width: 639px) {
+  .registration-card .section-card-header { align-items: flex-start; }
+  .registration-field, .registration-action { min-height: 44px; font-size: 16px; }
+  .activity-form .registration-field { font-size: 14px; }
+}
