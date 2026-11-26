@@ -243,3 +243,84 @@
     z-index: 35;
   }
 }
+
+/* PR 04 — scoped spreadsheet density and scroll; never virtualize or alter cell data. */
+.gradebook-table-scroll {
+  min-width: 0;
+  max-height: max(240px, calc(100dvh - 395px));
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border-control)) hsl(var(--surface-default));
+  scroll-padding-top: 42px;
+}
+.gradebook-overview-scroll { max-height: max(240px, calc(100dvh - 285px)); }
+.gradebook-activity-scroll { max-height: max(240px, calc(100dvh - 460px)); scroll-padding-top: 76px; }
+.gradebook-workspace .gradebook-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-table);
+}
+.gradebook-workspace .gradebook-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 5px 8px;
+  background: hsl(var(--surface-table-header));
+  color: hsl(var(--text-muted));
+  border-bottom: 1px solid hsl(var(--border-subtle));
+  text-transform: none;
+  letter-spacing: normal;
+}
+.gradebook-workspace .gradebook-table tbody td {
+  height: var(--height-row-desktop);
+  padding: 3px 8px;
+  border-bottom: 1px solid hsl(var(--border-subtle));
+}
+.gradebook-workspace .gradebook-table tbody td[colspan] { height: auto; padding: 12px; }
+.gradebook-workspace .gradebook-table thead th:first-child { left: 0; z-index: 30; }
+.gradebook-workspace .gradebook-table td[data-spreadsheet-column="0"],
+.gradebook-workspace .gradebook-activity tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: hsl(var(--surface-default));
+  box-shadow: 1px 0 0 hsl(var(--border-subtle));
+}
+.gradebook-workspace .gradebook-table tr:nth-child(even) td[data-spreadsheet-column="0"] { background-color: hsl(var(--surface-stripe)); }
+.gradebook-workspace .gradebook-table tr:hover td[data-spreadsheet-column="0"] { background-color: hsl(var(--surface-hover)); }
+.gradebook-workspace .gradebook-table td[data-grade-kind="calculated"] { background-color: hsl(var(--surface-muted)); }
+.gradebook-workspace .gradebook-table td[data-grade-kind="total"] { background-color: hsl(var(--surface-table-header)); }
+.gradebook-workspace .gradebook-table td[data-spreadsheet-selected="true"] {
+  background-color: hsl(var(--surface-selection));
+  box-shadow: inset 0 0 0 1px hsl(var(--focus));
+}
+.gradebook-workspace .gradebook-score {
+  height: var(--height-grade-input);
+  padding: 1px 6px;
+  border: 1px solid hsl(var(--border-control));
+  border-radius: var(--radius-cell);
+  background-color: hsl(var(--surface-default));
+  color: hsl(var(--text-main));
+  text-align: center;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.gradebook-workspace .gradebook-score::placeholder { color: hsl(var(--text-muted)); }
+.gradebook-workspace .gradebook-score:focus {
+  outline: 2px solid hsl(var(--focus));
+  outline-offset: 0;
+  background-color: hsl(var(--surface-default));
+}
+.gradebook-workspace .gradebook-table td[data-spreadsheet-selected="true"] .gradebook-score:not(:focus) { background-color: hsl(var(--surface-selection)); }
+.gradebook-workspace .gradebook-activity tbody td { padding: 2px 6px; }
+@media (max-width: 639px) {
+  .gradebook-table-scroll, .gradebook-overview-scroll, .gradebook-activity-scroll { max-height: 55dvh; }
+  .gradebook-workspace .gradebook-table tbody td { height: var(--height-row-mobile); padding: 3px 6px; }
+  .gradebook-workspace .gradebook-score { height: 30px; }
+  .gradebook-workspace .gradebook-table th:first-child,
+  .gradebook-workspace .gradebook-table td[data-spreadsheet-column="0"],
+  .gradebook-workspace .gradebook-activity tbody td:first-child { min-width: 140px !important; max-width: 160px; }
+  .gradebook-workspace .gradebook-table td[data-spreadsheet-column="0"],
+  .gradebook-workspace .gradebook-activity tbody td:first-child { white-space: normal; overflow-wrap: anywhere; }
+  .gradebook-workspace .gradebook-table td[data-spreadsheet-column="0"] span { white-space: normal; }
+}

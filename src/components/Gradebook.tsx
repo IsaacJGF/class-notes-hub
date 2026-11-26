@@ -137,6 +137,7 @@ export function Gradebook({
     "data-spreadsheet-row": row,
     "data-spreadsheet-column": column,
     "data-spreadsheet-value": value,
+    "data-spreadsheet-selected": isSpreadsheetCellSelected(gridId, row, column) ? "true" : undefined,
     tabIndex: -1,
   });
 
@@ -503,23 +504,21 @@ export function Gradebook({
 
     const gridId = `branch-${turma.id}-${term}-${component.id}`;
     return (
-      <div className="gradebook-search-panel overflow-clip rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-4 py-3">
+      <div className="gradebook-search-panel overflow-clip rounded-table border border-border bg-card">
+        <div className="gradebook-search-toolbar flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-card px-2.5 py-1 sm:flex-nowrap">
           <div className="min-w-0">
-            <h3 className="font-semibold">{component.name}</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <h3 className="text-sm font-semibold text-brand">{component.name}</h3>
+            <p className="text-xs leading-tight text-muted-foreground">
               {component.maxPoints === null ? "Sem limite de pontuação" : "Limite de " + formatPoints(component.maxPoints) + " pontos"}
               {" · Selecione células e use Ctrl+C/Ctrl+V"}
             </p>
           </div>
+          <div className="min-w-0 shrink-0 max-sm:w-full">{renderStudentSearch("gradebook")}</div>
         </div>
-        <div className="gradebook-search-toolbar flex justify-end border-b border-border bg-card px-3 py-1.5 sm:px-4">
-          {renderStudentSearch("gradebook")}
-        </div>
-        <div className="overflow-x-auto">
-          <table className="school-table min-w-full">
+        <div className="gradebook-table-scroll" role="region" aria-label={"Planilha de " + component.name} tabIndex={0}>
+          <table className="school-table gradebook-table gradebook-branch min-w-full">
             <thead><tr>
-              <th className="w-[42%]">
+              <th className="w-[42%] min-w-[140px]">
                 <button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button>
               </th>
               <th className="text-center">
@@ -534,13 +533,13 @@ export function Gradebook({
                 return <tr key={student.id}>
                   <td
                     {...spreadsheetCellAttributes(gridId, rowIndex, 0, student.name)}
-                    className={`whitespace-nowrap font-medium ${isSpreadsheetCellSelected(gridId, rowIndex, 0) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                    className={`whitespace-nowrap font-medium`}
                   >{student.name}</td>
                   <td
                     {...spreadsheetCellAttributes(gridId, rowIndex, 1, score == null ? "" : formatPoints(score))}
-                    className={`text-center ${isSpreadsheetCellSelected(gridId, rowIndex, 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                    className={`text-center`}
                   >
-                    <div className="mx-auto flex max-w-40 items-center justify-center gap-2">
+                    <div className="mx-auto flex max-w-40 items-center justify-center gap-1.5">
                       <input
                         type="number"
                         min="0"
@@ -554,7 +553,7 @@ export function Gradebook({
                         data-student-id={student.id}
                         data-component-id={component.id}
                         onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
-                        className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-sm shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                        className="gradebook-score w-24 max-w-full"
                       />
                       <span className="whitespace-nowrap text-xs text-muted-foreground">{component.maxPoints === null ? "pts" : "/ " + formatPoints(component.maxPoints)}</span>
                     </div>
@@ -571,18 +570,18 @@ export function Gradebook({
   const renderBlockDetailSheet = (block: typeof EVALUATION_BLOCKS[number] & { components: EvaluationComponent[] }) => {
     const gridId = `block-${turma.id}-${term}-${block.id}`;
     return (
-    <details className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Table2 size={17} /></span>
+    <details className="group overflow-clip rounded-table border border-border bg-card">
+      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 px-2.5 py-1 transition hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-cell bg-primary/10 text-primary"><Table2 size={14} /></span>
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Planilha completa — {block.id === "PE" ? "Pontuação extra (P.E.)" : block.label}</span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">Recolhida. Expanda para editar várias ramificações e copiar ou colar notas em conjunto.</span>
+          <span className="text-xs font-semibold text-brand">Planilha completa — {block.id === "PE" ? "Pontuação extra (P.E.)" : block.label}</span>
+          <span className="ml-2 hidden text-xs text-muted-foreground lg:inline">Expanda para editar e copiar várias ramificações.</span>
         </span>
         <ChevronDown size={18} className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
-      <div className="border-t border-border p-3 sm:p-4">
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="school-table min-w-full">
+      <div className="border-t border-border p-2">
+        <div className="gradebook-table-scroll rounded-table border border-border" role="region" aria-label={"Planilha completa de " + block.label} tabIndex={0}>
+          <table className="school-table gradebook-table min-w-full">
             <thead><tr>
               <th>
                 <button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={gridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button>
@@ -602,7 +601,7 @@ export function Gradebook({
             ) : students.map((student, rowIndex) => <tr key={student.id}>
               <td
                 {...spreadsheetCellAttributes(gridId, rowIndex, 0, student.name)}
-                className={`whitespace-nowrap font-medium ${isSpreadsheetCellSelected(gridId, rowIndex, 0) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                className={`whitespace-nowrap font-medium`}
               >{student.name}</td>
               {block.components.map((component, componentIndex) => {
                 const score = componentScore(student.id, component);
@@ -611,7 +610,8 @@ export function Gradebook({
                 return <td
                   key={component.id}
                   {...spreadsheetCellAttributes(gridId, rowIndex, gridColumn, scoreValue)}
-                  className={`text-center ${isSpreadsheetCellSelected(gridId, rowIndex, gridColumn) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                  data-grade-kind={component.kind === "activities" ? "calculated" : "editable"}
+                  className="text-center"
                 >
                   {component.kind === "activities" ? (
                     scoreValue || <span className="text-muted-foreground">—</span>
@@ -629,14 +629,15 @@ export function Gradebook({
                       data-student-id={student.id}
                       data-component-id={component.id}
                       onChange={(event) => handleScoreChange(student.id, component, event.currentTarget.value)}
-                      className="w-24 rounded-md border border-input bg-background px-2 py-1.5 text-center text-sm font-medium focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                      className="gradebook-score w-24"
                     />
                   )}
                 </td>;
               })}
               <td
                 {...spreadsheetCellAttributes(gridId, rowIndex, block.components.length + 1, formatPoints(gradesByStudent.get(student.id)!.blockTotals[block.id]))}
-                className={`text-center font-bold ${isSpreadsheetCellSelected(gridId, rowIndex, block.components.length + 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                data-grade-kind="total"
+                className="text-center font-semibold"
               >{formatPoints(gradesByStudent.get(student.id)!.blockTotals[block.id])}{block.maxPoints === null ? "" : " / 20"}</td>
             </tr>)}</tbody>
           </table>
@@ -658,40 +659,40 @@ export function Gradebook({
       onClick={handleSpreadsheetColumnClick}
       onCopy={handleSpreadsheetCopy}
       onPaste={handleSpreadsheetPaste}
-      className="section-card min-w-0 overflow-clip"
+      className="section-card gradebook-workspace min-w-0 overflow-clip"
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card px-4 py-4 sm:px-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><Calculator size={20} /></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-2.5 py-1.5 sm:px-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-button bg-surface-active text-action"><Calculator size={17} /></div>
         <div className="min-w-0 flex-1">
-          <div className="text-lg font-bold tracking-tight">Notas de {turma.name}</div>
-          <div className="mt-0.5 text-sm text-muted-foreground">{getTermLabel(term)} · cinco avaliações de até 20 pontos e pontuação extra</div>
+          <div className="text-base font-semibold text-brand">Notas de {turma.name}</div>
+          <div className="text-xs leading-tight text-muted-foreground">{getTermLabel(term)} · cinco avaliações de até 20 pontos e pontuação extra</div>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <button onClick={openConfiguration} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-button border border-input bg-card px-3 py-2 text-xs font-semibold transition hover:bg-muted sm:flex-none">
+          <button onClick={openConfiguration} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-button sm:min-h-8 border border-input bg-card px-2.5 py-1 text-xs font-semibold transition hover:bg-muted sm:flex-none">
             <Settings2 size={14} /> Configurar divisões
           </button>
-          <button onClick={exportWorkbook} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-button bg-action px-3 py-2 text-xs font-semibold text-action-foreground transition hover:bg-action/90 sm:flex-none">
+          <button onClick={exportWorkbook} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-button sm:min-h-8 bg-action px-2.5 py-1 text-xs font-semibold text-action-foreground transition hover:bg-action/90 sm:flex-none">
             <Download size={14} /> Exportar Excel
           </button>
         </div>
       </div>
-      <div className="p-3 sm:p-5">
-        <Tabs defaultValue="overview" onValueChange={onActiveTabChange} className="space-y-4">
-          <div className="nav-scroll min-w-0 overflow-x-auto pb-1">
+      <div className="p-2">
+        <Tabs defaultValue="overview" onValueChange={onActiveTabChange} className="space-y-1.5">
+          <div className="nav-scroll min-w-0 overflow-x-auto">
             <TabsList aria-label="Blocos de notas" className="inline-flex h-auto min-w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0 text-muted-foreground sm:min-w-0">
               <TabsTrigger value="overview" className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 text-xs hover:bg-muted/60 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-action data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-action data-[state=active]:shadow-none sm:min-h-[var(--height-navigation)] sm:text-sm">Geral</TabsTrigger>
               {componentsByBlock.map((block) => <TabsTrigger key={block.id} value={block.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 text-xs hover:bg-muted/60 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-action data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-action data-[state=active]:shadow-none sm:min-h-[var(--height-navigation)] sm:text-sm">{block.id === "PE" ? "Pontuação extra" : block.label}</TabsTrigger>)}
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="mt-0 space-y-4">
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <div className="border-b border-border px-4 py-3">
-                <h3 className="font-semibold">Resumo geral das notas</h3>
-                <p className="mt-1 text-xs text-muted-foreground">Clique no título de uma coluna ou arraste pelas células para selecionar. Use Ctrl+C para copiar.</p>
+          <TabsContent value="overview" className="mt-0 space-y-1.5">
+            <div className="overflow-clip rounded-table border border-border bg-card">
+              <div className="flex flex-wrap items-center gap-x-3 border-b border-border px-2.5 py-1.5">
+                <h3 className="text-sm font-semibold text-brand">Resumo geral das notas</h3>
+                <p className="text-xs text-muted-foreground">Selecione células ou colunas e use Ctrl+C para copiar. Valores calculados.</p>
               </div>
-              <div className="overflow-x-auto">
-                <table className="school-table min-w-full">
+              <div className="gradebook-table-scroll gradebook-overview-scroll" role="region" aria-label="Planilha geral de notas" tabIndex={0}>
+                <table className="school-table gradebook-table min-w-full">
                   <thead><tr>
                     <th><button type="button" className="w-full text-left" data-spreadsheet-column-header="true" data-spreadsheet-grid={overviewGridId} data-spreadsheet-column={0} data-spreadsheet-row-count={students.length} title="Selecionar a coluna de alunos">Aluno</button></th>
                     {componentsByBlock.map((block, blockIndex) => <th key={block.id} className="text-center">
@@ -719,7 +720,7 @@ export function Gradebook({
                         <tr>
                           <td
                             {...spreadsheetCellAttributes(overviewGridId, rowIndex, 0, student.name)}
-                            className={`min-w-[220px] font-medium ${isSpreadsheetCellSelected(overviewGridId, rowIndex, 0) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                            className={`min-w-[220px] font-medium`}
                           >
                             <div className="flex flex-wrap items-center gap-1.5">
                               <span className="whitespace-nowrap">{student.name}</span>
@@ -772,7 +773,8 @@ export function Gradebook({
                             return <td
                               key={block.id}
                               {...spreadsheetCellAttributes(overviewGridId, rowIndex, blockIndex + 1, formatPoints(summary.blockTotals[block.id]))}
-                              className={`text-center font-medium ${belowAverage ? "bg-destructive/10 font-semibold text-destructive" : ""} ${isSpreadsheetCellSelected(overviewGridId, rowIndex, blockIndex + 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                              data-grade-kind="calculated"
+                              className={`text-center font-medium ${belowAverage ? "font-semibold text-status-low-grade" : ""}`}
                               title={belowAverage ? "Abaixo da média de 14 pontos neste bloco" : undefined}
                             >
                               {formatPoints(summary.blockTotals[block.id])}
@@ -780,10 +782,11 @@ export function Gradebook({
                           })}
                           <td
                             {...spreadsheetCellAttributes(overviewGridId, rowIndex, componentsByBlock.length + 1, formatPoints(summary.finalTotal))}
-                            className={`text-center ${isSpreadsheetCellSelected(overviewGridId, rowIndex, componentsByBlock.length + 1) ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+                            data-grade-kind="total"
+                            className="text-center"
                           >
                             <span
-                              className={`inline-flex min-w-16 justify-center rounded-full px-3 py-1 font-bold ${summary.finalTotal < 70 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
+                              className={`inline-flex min-w-14 justify-center rounded-cell px-2 py-0.5 font-semibold ${summary.finalTotal < 70 ? "bg-status-low-grade-bg text-status-low-grade" : "text-brand"}`}
                               title={summary.finalTotal < 70 ? "Nota final abaixo da média de 70 pontos" : undefined}
                             >
                               {formatPoints(summary.finalTotal)}
@@ -840,16 +843,16 @@ export function Gradebook({
           </TabsContent>
 
           {componentsByBlock.map((block) => (
-            <TabsContent key={block.id} value={block.id} className="mt-0 space-y-4">
-              <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-border bg-muted/35 px-4 py-3">
-                <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bloco de avaliação</p><h2 className="mt-0.5 text-xl font-bold">{block.id === "PE" ? "Pontuação extra" : block.label}</h2></div>
-                <div className="rounded-lg border border-border bg-card px-3 py-2 text-right shadow-sm"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Subramificações</p><p className="font-bold">{block.components.length}</p></div>
+            <TabsContent key={block.id} value={block.id} className="mt-0 space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-1 px-1">
+                <div className="flex items-baseline gap-2"><h2 className="text-sm font-semibold text-brand">{block.id === "PE" ? "Pontuação extra" : block.label}</h2><span className="text-xs text-muted-foreground">Bloco de avaliação</span></div>
+                <span className="text-xs text-muted-foreground">{block.components.length} subramificação(ões)</span>
               </div>
 
               {renderBlockDetailSheet(block)}
 
-              <Tabs key={block.id + "-" + block.components.map((component) => component.id).join("-")} defaultValue={block.components[0]?.id} className="space-y-3">
-                <div className="nav-scroll min-w-0 overflow-x-auto pb-1">
+              <Tabs key={block.id + "-" + block.components.map((component) => component.id).join("-")} defaultValue={block.components[0]?.id} className="space-y-1.5">
+                <div className="nav-scroll min-w-0 overflow-x-auto">
                   <TabsList aria-label={"Ramificações de " + block.label} className="inline-flex h-auto min-w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0 text-muted-foreground sm:min-w-0">
                     {block.components.map((component) => <TabsTrigger key={component.id} value={component.id} className="min-h-11 max-w-64 shrink-0 gap-2 rounded-none border-b-2 border-transparent px-3 text-xs hover:bg-muted/60 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-action data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-action data-[state=active]:shadow-none sm:min-h-[var(--height-navigation)] sm:text-sm"><span className="truncate">{component.name}</span>{component.kind === "activities" && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">automática</span>}</TabsTrigger>)}
                   </TabsList>

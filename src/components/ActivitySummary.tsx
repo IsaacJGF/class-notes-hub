@@ -205,8 +205,8 @@ export function ActivitySummary({
   };
 
   return (
-    <section className="gradebook-search-panel overflow-clip rounded-xl border border-border bg-card shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
+    <section className="gradebook-search-panel overflow-clip rounded-table border border-border bg-card">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-2.5 py-1.5">
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold">Atividade</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">{getTermLabel(term)} · {activities.length} atividade(s) · nota máxima {formatPoints(activityMaximum)} pontos</p>
@@ -221,7 +221,7 @@ export function ActivitySummary({
         </button>
       </div>
 
-      <form onSubmit={handleAddActivity} className="grid gap-3 border-b border-border bg-background p-3 sm:grid-cols-[minmax(12rem,1fr)_auto_auto] sm:items-end sm:p-4">
+      <form onSubmit={handleAddActivity} className="grid gap-2 border-b border-border bg-background p-2 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-end xl:grid-cols-[minmax(10rem,1fr)_auto_minmax(0,2fr)]">
         <label className="flex min-w-0 flex-col gap-1">
           <span className="text-xs font-semibold text-muted-foreground">Nome da atividade</span>
           <input
@@ -243,7 +243,7 @@ export function ActivitySummary({
             className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
           />
         </label>
-        <div className="flex flex-wrap items-end gap-2 sm:col-span-3 sm:justify-between">
+        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 sm:justify-between xl:col-span-1">
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-muted-foreground">Prazo</span>
@@ -274,7 +274,7 @@ export function ActivitySummary({
       </form>
 
       {alerts.length > 0 && <details className="border-b border-warning-border bg-warning-light/70">
-        <summary className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm font-semibold text-warning-foreground">
+        <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-warning-foreground">
           <AlertTriangle size={15} /> {alerts.length} alerta(s) de aproveitamento
           <span className="ml-auto text-xs font-normal">Limite atual: {activityThreshold}%</span>
         </summary>
@@ -290,7 +290,7 @@ export function ActivitySummary({
         </div>
       </details>}
 
-      <div className="gradebook-search-toolbar flex justify-end border-b border-border bg-card px-3 py-1.5 sm:px-4">
+      <div className="gradebook-search-toolbar flex justify-end border-b border-border bg-card px-2.5 py-1">
         {renderStudentSearch("gradebook")}
       </div>
 
@@ -300,8 +300,8 @@ export function ActivitySummary({
         <div className="p-8 text-center text-sm text-muted-foreground">Ainda não há atividades neste trimestre. Cadastre a primeira acima.</div>
       ) : (
         <TooltipProvider delayDuration={180}>
-        <div className="max-h-[70vh] overflow-auto">
-          <table className="school-table school-table-compact table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
+        <div className="gradebook-table-scroll gradebook-activity-scroll" role="region" aria-label="Planilha de atividades" tabIndex={0}>
+          <table className="school-table school-table-compact gradebook-table gradebook-activity table-fit-content center-non-student-cols" style={{ minWidth: "max-content" }}>
             <thead><tr>
               <th className="sticky left-0 top-0 z-30" style={{ backgroundColor: "hsl(var(--table-header))", minWidth: "16rem" }}>Aluno</th>
               <th className="sticky top-0 z-20 text-center" style={{ backgroundColor: "hsl(var(--table-header))" }}>No prazo</th>
@@ -364,7 +364,7 @@ export function ActivitySummary({
                             setContextMenu({ x: event.clientX, y: event.clientY, studentId: student.id, activityId: activity.id });
                           }}
                           aria-label={`${student.name}: ${activity.name} — ${getActivityStatusLabel(activity, record)}`}
-                          className="mx-auto flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-muted"
+                          className="mx-auto flex h-7 w-8 items-center justify-center rounded-cell transition hover:bg-muted max-sm:h-8"
                         >
                           <StatusIcon
                             size={17}
