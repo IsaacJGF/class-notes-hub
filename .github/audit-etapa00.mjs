@@ -51,15 +51,26 @@ await run('pr03-modal-teclado',async()=>{
   await shot('pr03-modal-teclado');await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});return {keyboardTrap:true,escape:true,box};
 });
 await run('pr03-tooltip-estados',async()=>{
-  await tab('AEP');const buttons=p.getByRole('button',{name:/Aluno Fictício 0[1-9]: Atividade fictícia 1/});
-  let states=[];for(const label of ['No prazo','Atrasada','Pendente']){
-    const target=buttons.filter({hasNotText:'__never__'});const count=await target.count();
-    let chosen=null;for(let i=0;i<count;i++){const b=target.nth(i);if((await b.getAttribute('aria-label')||'').toLowerCase().includes(label.toLowerCase())){chosen=b;break;}}
-    if(!chosen){states.push({label,available:false});continue;}
-    await chosen.scrollIntoViewIfNeeded();await chosen.hover();await p.getByRole('tooltip').waitFor();await p.waitForTimeout(220);
-    const pop=p.locator('[data-radix-popper-content-wrapper]:visible').last();const box=await pop.boundingBox();assert(box&&box.x>=-2&&box.y>=-2&&box.x+box.width<=width+2&&box.y+box.height<=height+2,'tooltip outside viewport');
-    await shot('pr03-tooltip-'+label.replaceAll(' ','-'));states.push({label,available:true,box});await p.mouse.move(0,0);await p.waitForTimeout(200);
-  }assert(states.some(x=>x.available),'no fixture status available');return states;
+  await tab('AEP');const states=[];
+  for(const label of ['No prazo','Atrasada','Pendente']){
+    const buttons=p.getByRole('button',{name:/Aluno Fictício 0[1-9]: Atividade fictícia 1/});
+    const count=await buttons.count();let chosen=null;
+    for(let i=0;i<count;i++){const b=buttons.nth(i);if((await b.getAttribute('aria-label')||'').toLowerCase().includes(label.toLowerCase())){chosen=b;break;}}
+    assert(chosen,'estado ausente na fixture: '+label);
+    await p.keyboard.press('Escape');await p.mouse.move(0,0);
+    await chosen.evaluate(el=>el.scrollIntoView({block:'center',inline:'center',behavior:'instant'}));
+    await p.waitForTimeout(200);await chosen.hover();
+    const tip=p.locator('[data-school-tooltip][data-state="delayed-open"],[data-school-tooltip][data-state="instant-open"]').filter({hasText:label});
+    await tip.waitFor({state:'visible'});await p.waitForTimeout(180);
+    const box=await tip.boundingBox();
+    assert(box&&box.x>=-2&&box.y>=-2&&box.x+box.width<=width+2&&box.y+box.height<=height+2,'tooltip outside viewport: '+label+' '+JSON.stringify(box));
+    await shot('pr03-tooltip-'+label.replaceAll(' ','-'));
+    states.push({label,hover:true,box});
+    await p.keyboard.press('Escape');await p.mouse.move(0,0);await tip.waitFor({state:'hidden'});
+    await chosen.focus();await tip.waitFor({state:'visible'});states[states.length-1].keyboardFocus=true;
+    await p.keyboard.press('Escape');await tip.waitFor({state:'hidden'});await chosen.evaluate(el=>el.blur());
+  }
+  assert.equal(states.length,3);return states;
 });
 await run('pr03-transferencia',async()=>{
   await p.getByRole('navigation',{name:'Cadastro e turmas'}).getByRole('button',{name:'Cadastro',exact:true}).click();
@@ -74,7 +85,7 @@ await run('pr03-transferencia',async()=>{
 });
 await run('pr03-csv',async()=>{
   await p.getByRole('button',{name:'Importar CSV',exact:true}).click();const dialog=p.getByRole('dialog');await dialog.waitFor();await p.waitForTimeout(250);await shot('pr03-csv-inicial');
-  const before=await storage();const file=dialog.locator('input[type=file]');await file.setInputFiles({name:'fixture-audit.csv',mimeType:'text/csv',buffer:Buffer.from('nome,turma\\nAluno CSV Fictício,Turma Fictícia A\\n,Turma Fictícia A\\n','utf8')});
+  const before=await storage();const file=dialog.locator('input[type=file]');const csv=['nome,turma','Aluno CSV Fictício,Turma Fictícia A',',Turma Fictícia A',''].join(String.fromCharCode(10));assert.equal(csv.split(String.fromCharCode(10)).length,4);await file.setInputFiles({name:'fixture-audit.csv',mimeType:'text/csv',buffer:Buffer.from(csv,'utf8')});
   await dialog.getByText('Nome em branco',{exact:false}).first().waitFor();await shot('pr03-csv-validacao');
   await dialog.getByRole('button',{name:/^Importar 1 aluno$/}).click();await dialog.getByText(/1 aluno importado com sucesso/).waitFor();
   const after=await storage();assert.equal(after.students.length,before.students.length+1);assert.equal(after.students.filter(x=>x.name==='Aluno CSV Fictício').length,1);assert.equal(after.turmas.length,before.turmas.length);await shot('pr03-csv-sucesso');

@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: e8fde0ce77371d403f0b484a2a297bec3e57cf27
+          ref: 61344e9b553ce2cb7608f5ce81ef7751e7f694fc
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
-          test "$(git rev-parse HEAD)" = e8fde0ce77371d403f0b484a2a297bec3e57cf27
+          test "$(git rev-parse HEAD)" = 61344e9b553ce2cb7608f5ce81ef7751e7f694fc
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
       - name: Browser audit
@@ -61,6 +61,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr03-soft-blue-e8fde0c
+          name: pr03-soft-blue-61344e9
           path: evidence/
           retention-days: 14
