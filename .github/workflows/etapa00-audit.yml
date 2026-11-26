@@ -1,7 +1,7 @@
-name: PR 01 - auditoria Soft Blue
+name: PR 02 - auditoria de navegacao Soft Blue
 on:
   push:
-    branches: [audit/pr01-soft-blue]
+    branches: [audit/pr02-soft-blue]
 permissions:
   contents: read
 jobs:
@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: cafa499c492cc6246033766111d4a06c575d4501
+          ref: 09e87c1626b92eb13fbddd18b8042fe11446e16e
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
-          test "$(git rev-parse HEAD)" = cafa499c492cc6246033766111d4a06c575d4501
+          test "$(git rev-parse HEAD)" = 09e87c1626b92eb13fbddd18b8042fe11446e16e
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
       - name: Browser audit
@@ -61,6 +61,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr01-soft-blue-cafa499
+          name: pr02-soft-blue-09e87c1
           path: evidence/
           retention-days: 14
