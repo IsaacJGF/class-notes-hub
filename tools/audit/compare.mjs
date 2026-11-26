@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+const [out]=process.argv.slice(2);
+const read=(v,n)=>fs.readFileSync(path.join(out,v,n));
+const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
+const a=JSON.parse(read('original','resultados.json')),b=JSON.parse(read('final','resultados.json'));
+const sameFixture=read('original','fixture.json').equals(read('final','fixture.json'));
+const exports=['1366x768','1920x1080','390x844'].map(tag=>{const file=tag+'-exportacao.xlsx';const x=hash(read('original',file)),y=hash(read('final',file));return {tag,original:x,final:y,identical:x===y};});
+const metrics=['1366x768','1920x1080','390x844'].map(tag=>({tag,rows:Object.fromEntries(['cadastro','geral','notas','atividade'].map(name=>[name,{original:a.find(x=>x.tag===tag&&x.name===name)?.data?.visibleRows,final:b.find(x=>x.tag===tag&&x.name===name)?.data?.visibleRows}])),search:{original:a.find(x=>x.tag===tag&&x.name==='pesquisa-scroll')?.data?.deltaY,final:b.find(x=>x.tag===tag&&x.name==='pesquisa-scroll')?.data?.deltaY}}));
+const inventory=Object.fromEntries(['original','final'].map(v=>{const d=JSON.parse(read(v,'inventory.json'));return [v,{files:d.length,inlineAttributes:d.reduce((a,x)=>a+x.inlineAttributes,0),inlineLiteral:d.reduce((a,x)=>a+x.inlineLiteral,0),tokens:[...new Set(d.flatMap(x=>x.tokens))].sort()}]}));
+const report={sameFixture,exports,metrics,inventory,checks:{original:{total:a.length,failed:a.filter(x=>x.status!=='pass')},final:{total:b.length,failed:b.filter(x=>x.status!=='pass')}},benchmark:JSON.parse(fs.readFileSync(path.join(out,'benchmark-summary.json')))};
+fs.writeFileSync(path.join(out,'comparacao.json'),JSON.stringify(report,null,2));
+assert(sameFixture,'fixture diverged');assert(exports.every(e=>e.identical),'XLSX bytes diverged: review semantic equivalence before release');
+assert.equal(a.length,45);assert.equal(b.length,111);assert(a.every(x=>x.status==='pass'));assert(b.every(x=>x.status==='pass'));
