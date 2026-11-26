@@ -137,12 +137,15 @@ export function ActivitySummary({
   };
 
   const formatTooltipDate = (date: string) => {
-    const [year, month, day] = date.split("-").map(Number);
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}).*)?$/.exec(date);
+    if (!match) return date;
+    const [, yearText, monthText, dayText, hour, minute] = match;
+    const [year, month, day] = [yearText, monthText, dayText].map(Number);
     if (!year || !month || !day) return date;
     const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "short" })
       .format(new Date(year, month - 1, day))
       .replace(/\./g, "");
-    return `${String(day).padStart(2, "0")} ${monthLabel} ${year}`;
+    return `${String(day).padStart(2, "0")} ${monthLabel} ${year}${hour !== undefined && minute !== undefined ? `, ${hour}h${minute}` : ""}`;
   };
 
   const handleAddActivity = (event: React.FormEvent) => {
@@ -227,7 +230,7 @@ export function ActivitySummary({
             placeholder="Ex.: Prova 1, Lista 2..."
             value={activityName}
             onChange={(event) => setActivityName(event.currentTarget.value)}
-            className="min-h-10 rounded-lg border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+            className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -237,7 +240,7 @@ export function ActivitySummary({
             required
             value={activityDate}
             onChange={(event) => setActivityDate(event.currentTarget.value)}
-            className="min-h-10 rounded-lg border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+            className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
           />
         </label>
         <div className="flex flex-wrap items-end gap-2 sm:col-span-3 sm:justify-between">
@@ -247,7 +250,7 @@ export function ActivitySummary({
               <select
                 value={deadlineMode}
                 onChange={(event) => setDeadlineMode(event.currentTarget.value as DeadlineMode)}
-                className="min-h-10 rounded-lg border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
               >
                 <option value="none">Sem prazo</option>
                 <option value="date">Data específica</option>
@@ -256,10 +259,10 @@ export function ActivitySummary({
             </label>
             {deadlineMode === "date" && <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-muted-foreground">Data limite</span>
-              <input type="date" min={activityDate} required value={deadlineDate} onChange={(event) => setDeadlineDate(event.currentTarget.value)} className="min-h-10 rounded-lg border border-input bg-card px-3 py-2 text-sm" />
+              <input type="date" min={activityDate} required value={deadlineDate} onChange={(event) => setDeadlineDate(event.currentTarget.value)} className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm" />
             </label>}
             {deadlineMode === "days" && <label className="flex items-center gap-2 pb-2 text-sm">
-              <input type="number" min={1} value={deadlineDays} onChange={(event) => setDeadlineDays(Math.max(1, Number(event.currentTarget.value) || 1))} className="w-20 rounded-lg border border-input bg-card px-2 py-1.5 text-sm" />
+              <input type="number" min={1} value={deadlineDays} onChange={(event) => setDeadlineDays(Math.max(1, Number(event.currentTarget.value) || 1))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm" />
               dia(s) após a data da atividade
             </label>}
             {deadlineMode !== "none" && computeDeadline() && <span className="pb-2 text-xs text-muted-foreground">Vence em {formatDate(computeDeadline()!)}</span>}
@@ -278,7 +281,7 @@ export function ActivitySummary({
         <div className="flex flex-wrap items-end gap-4 border-t border-warning-border bg-card/70 px-4 py-3">
           <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             Alertar abaixo de
-            <input type="number" min={0} max={100} value={activityThreshold} onChange={(event) => setActivityThreshold(Math.max(0, Math.min(100, Number(event.currentTarget.value) || 0)))} className="w-20 rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-foreground" />
+            <input type="number" min={0} max={100} value={activityThreshold} onChange={(event) => setActivityThreshold(Math.max(0, Math.min(100, Number(event.currentTarget.value) || 0)))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm text-foreground" />
             %
           </label>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -365,20 +368,20 @@ export function ActivitySummary({
                         >
                           <StatusIcon
                             size={17}
-                            style={{ color: late ? "hsl(32 55% 46%)" : isDone ? "hsl(var(--present))" : "hsl(var(--absent))" }}
+                            style={{ color: late ? "hsl(var(--status-late))" : isDone ? "hsl(var(--status-success))" : "hsl(var(--status-pending))" }}
                           />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="right" align="center" className="whitespace-nowrap">
-                        <TooltipArrow className="fill-[#F8FAFC] stroke-[#DCE5EF]" />
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-2 font-semibold ${late ? "bg-[#FEF3C7] text-[#92400E]" : isDone ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#FEE2E2] text-[#B91C1C]"}`}>
+                      <TooltipContent side="top" align="center" sideOffset={8}>
+                        <TooltipArrow className="fill-card stroke-border" />
+                        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+                          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold ${late ? "bg-[hsl(var(--status-late-bg))] text-[hsl(var(--status-late))]" : isDone ? "bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success))]" : "bg-status-pending-bg text-status-pending"}`}>
                             <StatusIcon size={16} aria-hidden="true" />
                             {statusLabel}
                           </span>
-                          <span aria-hidden="true" className="h-8 w-px shrink-0 bg-[#DCE5EF]" />
-                          <span className="flex items-center gap-2">
-                            <CalendarDays size={17} className="shrink-0 text-[#64748B]" aria-hidden="true" />
+                          <span aria-hidden="true" className="hidden h-6 w-px shrink-0 bg-border sm:block" />
+                          <span className="flex min-w-0 max-w-full items-center gap-1.5 break-words">
+                            <CalendarDays size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
                             {isDone && record?.markedAt ? (
                               <span><span>Registrada em </span><strong className="font-semibold">{formatTooltipDate(record.markedAt)}</strong></span>
                             ) : activity.deadline ? (
@@ -406,7 +409,7 @@ export function ActivitySummary({
         const markedAt = record?.markedAt ?? activity.date;
         const actuallyLate = !!activity.deadline && markedAt > activity.deadline;
         const overridden = !!record?.overrideOnTime;
-        return <div className="fixed z-50 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg" style={{ top: contextMenu.y, left: contextMenu.x }} onClick={(event) => event.stopPropagation()}>
+        return <div className="fixed z-50 min-w-[220px] rounded-card border border-border bg-popover p-1 shadow-overlay" style={{ top: contextMenu.y, left: contextMenu.x }} onClick={(event) => event.stopPropagation()}>
           <div className="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground">Status da entrega</div>
           {!activity.deadline ? <div className="px-3 py-2 text-xs text-muted-foreground">Esta atividade não possui prazo definido.</div>
             : actuallyLate && !overridden ? <button className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-accent" onClick={() => { setActivityOnTimeOverride(contextMenu.studentId, contextMenu.activityId, true); setContextMenu(null); }}>Marcar como feita no prazo</button>
@@ -424,8 +427,8 @@ export function ActivitySummary({
             updateActivity(editingActivity.id, { name: editingActivity.name });
             setEditingActivity(null);
           }}>
-            <label className="flex flex-col gap-1.5"><span className="text-sm font-medium">Nome da atividade</span><input autoFocus required value={editingActivity?.name ?? ""} onChange={(event) => setEditingActivity((current) => current ? { ...current, name: event.currentTarget.value } : null)} className="rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
-            <DialogFooter><button type="button" onClick={() => setEditingActivity(null)} className="rounded-lg border border-border px-4 py-2 text-sm">Cancelar</button><button type="submit" disabled={!editingActivity?.name.trim()} className="rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>Salvar</button></DialogFooter>
+            <label className="flex flex-col gap-1.5"><span className="text-sm font-medium">Nome da atividade</span><input autoFocus required value={editingActivity?.name ?? ""} onChange={(event) => setEditingActivity((current) => current ? { ...current, name: event.currentTarget.value } : null)} className="rounded-md border border-input bg-card px-3 py-2 text-sm" /></label>
+            <DialogFooter><button type="button" onClick={() => setEditingActivity(null)} className="min-h-11 rounded-button border border-input bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted sm:min-h-9">Cancelar</button><button type="submit" disabled={!editingActivity?.name.trim()} className="min-h-11 rounded-button px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 sm:min-h-9" style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>Salvar</button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

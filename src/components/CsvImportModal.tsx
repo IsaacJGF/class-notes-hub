@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, FileText, CheckCircle, AlertTriangle, Info, Download } from "lucide-react";
 import { SchoolData, Turma } from "@/types";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface ParsedRow {
   nome: string;
@@ -146,14 +147,8 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
   const hasHeaderError = rows.length === 1 && !rows[0].valid && rows[0].nome === "";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-    >
-      <div
-        className="relative flex w-full max-w-2xl flex-col rounded-xl shadow-2xl"
-        style={{ backgroundColor: "hsl(var(--card))", maxHeight: "90vh" }}
-      >
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent showClose={false} aria-describedby={undefined} className="flex max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:p-0">
         {/* Header */}
         <div
           className="flex items-center justify-between rounded-t-xl px-5 py-4 border-b"
@@ -161,11 +156,11 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
         >
           <div className="flex items-center gap-2">
             <Upload size={18} style={{ color: "hsl(var(--primary))" }} />
-            <h2 className="text-base font-bold" style={{ color: "hsl(var(--foreground))" }}>
+            <DialogTitle className="text-base font-semibold text-brand">
               Importar Alunos via CSV
-            </h2>
+            </DialogTitle>
           </div>
-          <button onClick={onClose} className="rounded p-1 hover:opacity-60 transition-opacity">
+          <button type="button" onClick={onClose} aria-label="Fechar importação" className="flex h-9 w-9 items-center justify-center rounded-button text-muted-foreground hover:bg-muted">
             <X size={18} style={{ color: "hsl(var(--muted-foreground))" }} />
           </button>
         </div>
@@ -192,7 +187,7 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
           {tab === "manual" ? (
             <div className="space-y-4">
               <div
@@ -205,7 +200,7 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
               </div>
               <button
                 onClick={downloadSampleCSV}
-                className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
+                className="flex items-center gap-2 rounded-button border px-3 py-2 text-sm font-medium transition-colors hover:opacity-80"
                 style={{
                   borderColor: "hsl(var(--primary))",
                   color: "hsl(var(--primary))",
@@ -225,9 +220,12 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
                   onDragLeave={() => setDragOver(false)}
                   onDrop={onDrop}
                   onClick={() => fileRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fileRef.current?.click(); } }}
                   className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors"
                   style={{
-                    borderColor: dragOver ? "hsl(var(--primary))" : "hsl(var(--border))",
+                    borderColor: dragOver ? "hsl(var(--primary))" : "hsl(var(--input))",
                     backgroundColor: dragOver ? "hsl(var(--primary) / 0.06)" : "hsl(var(--muted))",
                   }}
                 >
@@ -344,7 +342,7 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
         {/* Footer */}
         {tab === "import" && !imported && (
           <div
-            className="flex items-center justify-between gap-3 rounded-b-xl border-t px-5 py-4"
+            className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3"
             style={{ borderColor: "hsl(var(--border))" }}
           >
             <button
@@ -357,15 +355,15 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
-                style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}
+                className="rounded-button border px-3 py-2 text-sm font-medium transition-colors hover:opacity-80"
+                style={{ borderColor: "hsl(var(--input))", color: "hsl(var(--foreground))" }}
               >
                 Cancelar
               </button>
               <button
                 onClick={handleImport}
                 disabled={validRows.length === 0}
-                className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
+                className="flex items-center gap-2 rounded-button px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
                 style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
               >
                 <Upload size={15} />
@@ -379,21 +377,21 @@ export function CsvImportModal({ data, addStudent, addTurma, onClose }: Props) {
           <div className="flex justify-end gap-2 rounded-b-xl border-t px-5 py-4" style={{ borderColor: "hsl(var(--border))" }}>
             <button
               onClick={() => { setRows([]); setFileName(""); setImported(false); }}
-              className="rounded-lg border px-4 py-2 text-sm font-medium hover:opacity-80"
-              style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}
+              className="rounded-button border px-3 py-2 text-sm font-medium hover:opacity-80"
+              style={{ borderColor: "hsl(var(--input))", color: "hsl(var(--foreground))" }}
             >
               Importar outro arquivo
             </button>
             <button
               onClick={onClose}
-              className="rounded-lg px-5 py-2 text-sm font-semibold"
+              className="rounded-button px-3 py-2 text-sm font-semibold"
               style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
             >
               Concluir
             </button>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
