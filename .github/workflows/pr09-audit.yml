@@ -1,0 +1,100 @@
+name: PR 09 - Auditoria final Soft Blue
+on:
+  push:
+    branches: [audit/pr09-soft-blue]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 4d4faf185853ab1d744bf91e62720129814f21d8
+          path: original
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ef6bf88c7c88ed0054f3bd71dd6d0ffb60a49e36
+          path: final
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and validate both versions
+        shell: bash
+        run: |
+          mkdir -p evidence/{original,final} runner
+          node --version > evidence/node.txt
+          npm --version > evidence/npm.txt
+          lscpu > evidence/cpu.txt
+          for v in original final; do
+            (
+              cd "$v"
+              git rev-parse HEAD > "../evidence/$v/sha.txt"
+              npm ci --no-audit --no-fund > "../evidence/$v/install.txt" 2>&1
+              set +e
+              for task in build lint test; do
+                npm run "$task" > "../evidence/$v/$task.txt" 2>&1
+                echo "$task=$?" >> "../evidence/$v/status.txt"
+              done
+              set -e
+              grep -qx "build=0" "../evidence/$v/status.txt"
+              grep -qx "test=0" "../evidence/$v/status.txt"
+              git status --porcelain > "../evidence/$v/git-status.txt"
+            )
+          done
+          test "$(cat evidence/original/sha.txt)" = 4d4faf185853ab1d744bf91e62720129814f21d8
+          test "$(cat evidence/final/sha.txt)" = ef6bf88c7c88ed0054f3bd71dd6d0ffb60a49e36
+          cp tools/audit/*.mjs runner/
+          cd runner
+          printf '{"private":true}\n' > package.json
+          npm install --no-audit --no-fund playwright@1.52.0
+          npx playwright install --with-deps chromium
+      - name: Full browser regressions on same runner
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for v in original final; do
+            (
+              cd "$v"
+              npm run dev -- --strictPort > "../evidence/$v/vite.txt" 2>&1 &
+              server=$!
+              trap 'kill "$server" 2>/dev/null || true; fuser -k 5173/tcp 2>/dev/null || true' EXIT
+              for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5173/ >/dev/null && break; sleep 1; done
+              node ../runner/"$v".mjs "$PWD/../evidence/$v" "$PWD" 2>&1 | tee "../evidence/$v/browser-audit.txt"
+            ) || result=1
+            sleep 2
+          done
+          exit "$result"
+      - name: Alternating production-build benchmark
+        shell: bash
+        run: |
+          (cd original && exec node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 5181 --strictPort) > evidence/original/preview.txt 2>&1 &
+          a=$!
+          (cd final && exec node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 5182 --strictPort) > evidence/final/preview.txt 2>&1 &
+          b=$!
+          trap 'kill "$a" "$b" 2>/dev/null || true' EXIT
+          for port in 5181 5182; do
+            for i in $(seq 1 60); do curl -fsS "http://127.0.0.1:$port/" >/dev/null && break; sleep 1; done
+            curl -fsS "http://127.0.0.1:$port/" >/dev/null
+          done
+          node runner/benchmark.mjs "$PWD/evidence" | tee evidence/benchmark.log
+      - name: Compare results
+        shell: bash
+        run: node runner/compare.mjs "$PWD/evidence"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr09-soft-blue-final-ef6bf88
+          path: evidence/
+          retention-days: 30

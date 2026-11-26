@@ -1,6 +1,6 @@
 # Design System — Soft Blue (PR 01)
 
-Status: fundação implementada na branch de revisão; aprovação visual e merge ainda pendentes.
+Status: PR01–07 aprovados e integrados; modo escuro (PR08) dispensado por decisão do usuário. Auditoria final PR09 em andamento.
 Fonte da decisão: [DECISAO-ETAPA01.md](DECISAO-ETAPA01.md). A referência original está em [soft-blue.tokens.json](soft-blue.tokens.json); o CSS executável em [design-tokens.css](../../src/styles/design-tokens.css), importado por src/index.css.
 
 ## 01.01 — Tokens e compatibilidade
