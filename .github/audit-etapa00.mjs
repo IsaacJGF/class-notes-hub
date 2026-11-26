@@ -30,6 +30,10 @@ const storage=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('school_control
 const inputs=()=>p.locator('input[data-spreadsheet-input]:visible');
 await run('cadastro',async()=>{await p.goto(url);await p.getByRole('button',{name:'Turma Fictícia A',exact:true}).waitFor();await p.evaluate(()=>document.fonts.ready);await shot('cadastro');assert.equal((await storage()).students.length,41);return metrics()});
 await run('geral',async()=>{await p.getByRole('button',{name:'Turma Fictícia A',exact:true}).click();await p.getByText('Resumo geral das notas',{exact:true}).waitFor();await shot('geral');assert.equal(await p.locator('table tbody tr:visible').count(),41);return metrics()});
+const assertOverviewWidth=async(label)=>{
+ const m=await p.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth}));
+ assert(m.documentWidth<=width+1&&m.bodyWidth<=width+1,label+' / page overflow '+JSON.stringify(m));return m;
+};
 await run('pr06-geral-totais',async()=>{
  const period=p.getByLabel('Selecionar trimestre');const before=await storage();
  const region=p.getByRole('region',{name:'Planilha geral de notas'});const fmt=n=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
@@ -54,7 +58,7 @@ await run('pr06-geral-totais',async()=>{
     assert.equal(actual.value,fmt(n),student.name+' / term '+term+' / column '+j);assert.equal(actual.visual,fmt(n));assert.equal(actual.low,isLow);verified++;if(isLow)low++;
    }
   }
-  await p.evaluate(()=>window.scrollTo(0,0));await region.evaluate(e=>{e.scrollTop=0;e.scrollLeft=0;});await shot('pr06-geral-trimestre-'+term);
+  await p.evaluate(()=>window.scrollTo(0,0));await region.evaluate(e=>{e.scrollTop=0;e.scrollLeft=0;});await shot('pr06-geral-trimestre-'+term);await assertOverviewWidth('Geral trimestre '+term);
   summaries.push({term,students:rows.length,verifiedValues:verified,belowAverageCells:low,metrics:await metrics()});
  }
  await period.selectOption('1');await region.locator('[data-spreadsheet-grid="overview-audit-a-1"]').first().waitFor();assert.deepEqual(await storage(),before,'Geral must not modify records');return {summaries,unchanged:true};
@@ -65,10 +69,16 @@ await run('pr06-geral-copia-busca',async()=>{
  await region.getByRole('button',{name:'Nota final',exact:true}).click();assert.equal(await region.locator('td[data-spreadsheet-selected=true]').count(),41);
  await p.evaluate(()=>navigator.clipboard.writeText('__PR06_SENTINEL__'));await p.keyboard.press('Control+c');await p.waitForFunction(async()=>await navigator.clipboard.readText()!=='__PR06_SENTINEL__',null,{timeout:2500});
  const copied=(await p.evaluate(()=>navigator.clipboard.readText())).split(String.fromCharCode(10)).map(x=>x.replace(String.fromCharCode(13),''));
- assert.deepEqual(copied,expected);await shot('pr06-geral-copia');
+ assert.deepEqual(copied,expected);await shot('pr06-geral-copia');await assertOverviewWidth('Geral selecionada');
  await p.keyboard.press('Control+f');const search=p.getByRole('textbox',{name:'Pesquisar aluno',exact:true});await search.waitFor();assert.equal(await search.locator('xpath=ancestor::*[contains(@class,"class-context")]').count(),1);
- await search.fill('Aluno Ficticio 03');assert.equal(await cells.count(),1);await shot('pr06-geral-filtrada');await search.fill('nome inexistente 123');await region.getByText('Nenhum aluno encontrado.',{exact:true}).waitFor();await shot('pr06-geral-vazia');await p.keyboard.press('Escape');assert.equal(await cells.count(),41);
+ await search.fill('Aluno Ficticio 03');assert.equal(await cells.count(),1);await shot('pr06-geral-filtrada');await assertOverviewWidth('Geral filtrada');await search.fill('nome inexistente 123');await region.getByText('Nenhum aluno encontrado.',{exact:true}).waitFor();await shot('pr06-geral-vazia');await assertOverviewWidth('Geral vazia');await p.keyboard.press('Escape');assert.equal(await cells.count(),41);
  assert.deepEqual(await storage(),before);return {copiedValues:copied.length,accentSearch:true,emptyState:true,unchanged:true};
+});
+await run('pr06-rolagem-horizontal',async()=>{
+ const region=p.getByRole('region',{name:'Planilha geral de notas'});await p.evaluate(()=>window.scrollTo(0,0));await region.evaluate(e=>{e.scrollLeft=0;e.scrollTop=0;});
+ const initial=await assertOverviewWidth('Geral antes da rolagem');
+ const scroll=await region.evaluate(e=>{const name=e.querySelector('th:first-child');const before=name.getBoundingClientRect().left;e.scrollLeft=e.scrollWidth;const h=e.querySelector('th[data-overview-column="final"]').getBoundingClientRect(),b=e.getBoundingClientRect();return {left:e.scrollLeft,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,finalVisible:h.left>=b.left-1&&h.right<=b.right+1,nameDelta:name.getBoundingClientRect().left-before};});
+ if(width===390)assert(scroll.left>0,'missing internal horizontal scroll');assert(scroll.finalVisible,'final column not reachable '+JSON.stringify(scroll));assert(Math.abs(scroll.nameDelta)<=2,'student column not sticky');await assertOverviewWidth('Geral apos rolagem');await shot('pr06-rolagem-final');await region.evaluate(e=>e.scrollLeft=0);return {initial,scroll};
 });
 await run('modal-aluno',async()=>{await p.getByRole('button',{name:'Adicionar aluno',exact:true}).click();await p.getByRole('dialog').waitFor();await shot('modal-aluno');await p.keyboard.press('Escape');assert.equal((await storage()).students.length,41)});
 await run('modal-configuracao',async()=>{await p.getByRole('button',{name:'Configurar divisões'}).click();await p.getByRole('dialog').waitFor();await shot('modal-configuracao');await p.keyboard.press('Escape')});
@@ -211,7 +221,7 @@ await run('pr06-historico-geral',async()=>{
  const history=region.getByText('Histórico de atividades de Aluno Fictício 01',{exact:true});await history.waitFor();
  const expected=before.activityRecords.filter(r=>r.studentId==='s1'&&before.activities.some(a=>a.id===r.activityId&&a.turmaId!=='audit-b'));assert.equal(expected.length,15);
  const panel=history.locator('xpath=../..');const sections=panel.locator('section');assert.equal(await sections.count(),3);assert.equal(await panel.getByText(/^(Não entregue|Feita com atraso|No prazo)$/).count(),15);
- await shot('pr06-historico');await region.getByRole('button',{name:'Ocultar histórico de atividades de Aluno Fictício 01',exact:true}).click();await history.waitFor({state:'hidden'});
+ await shot('pr06-historico');await assertOverviewWidth('Historico aberto');await region.getByRole('button',{name:'Ocultar histórico de atividades de Aluno Fictício 01',exact:true}).click();await history.waitFor({state:'hidden'});
  assert.deepEqual(await storage(),before);return {records:expected.length,terms:3,unchanged:true};
 });
 results.push({tag,name:'pageerrors',status:errors.length?'fail':'pass',errors});flush();await context.close();
