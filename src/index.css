@@ -1,87 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import './styles/design-tokens.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
-@layer base {
-  :root {
-    /* Backgrounds */
-    --background: 210 20% 97%;
-    --foreground: 220 30% 12%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 12%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 12%;
-
-    /* Primary: Deep Navy Blue */
-    --primary: 220 65% 22%;
-    --primary-foreground: 0 0% 98%;
-
-    /* Secondary: Light blue-gray surface */
-    --secondary: 215 30% 92%;
-    --secondary-foreground: 220 65% 22%;
-
-    --muted: 215 20% 94%;
-    --muted-foreground: 215 15% 50%;
-
-    /* Accent: Teal */
-    --accent: 190 60% 45%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 80% 55%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 215 20% 86%;
-    --input: 215 20% 90%;
-    --ring: 220 65% 22%;
-
-    --radius: 0.4rem;
-
-    /* Custom tokens for this app */
-    --present: 140 60% 42%;
-    --present-foreground: 0 0% 100%;
-    --present-light: 140 50% 93%;
-
-    --absent: 0 75% 55%;
-    --absent-foreground: 0 0% 100%;
-    --absent-light: 0 70% 94%;
-
-    --done: 210 70% 50%;
-    --done-foreground: 0 0% 100%;
-    --done-light: 210 60% 93%;
-
-    --not-done: 35 80% 55%;
-    --not-done-foreground: 0 0% 100%;
-    --not-done-light: 35 70% 93%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 38 92% 20%;
-    --warning-light: 38 80% 94%;
-    --warning-border: 38 70% 75%;
-
-    --table-header: 220 65% 22%;
-    --table-header-foreground: 0 0% 98%;
-    --table-stripe: 215 20% 97%;
-    --table-hover: 215 30% 93%;
-
-    --sidebar-background: 220 55% 18%;
-    --sidebar-foreground: 210 30% 85%;
-    --sidebar-primary: 190 60% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 50% 28%;
-    --sidebar-accent-foreground: 210 30% 90%;
-    --sidebar-border: 220 50% 28%;
-    --sidebar-ring: 190 60% 50%;
-  }
-}
-
+/* Runtime design tokens are imported above. Legacy component styles stay in place. */
 @layer base {
   * {
     @apply border-border;
@@ -89,11 +13,18 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-ui);
+    font-size: var(--text-body);
+  }
+
+  /* Keep existing keyboard focus rings; provide a fallback for native controls. */
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: var(--focus-width) solid hsl(var(--focus));
+    outline-offset: var(--focus-offset);
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-ui);
     font-weight: 600;
   }
 }
@@ -101,7 +32,9 @@ All colors MUST be HSL.
 @layer components {
   /* Table styles */
   .school-table {
-    @apply w-full border-collapse text-sm;
+    @apply w-full border-collapse;
+    font-size: var(--text-table);
+    font-variant-numeric: tabular-nums;
   }
 
   .school-table thead tr {
@@ -110,7 +43,8 @@ All colors MUST be HSL.
   }
 
   .school-table thead th {
-    @apply px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wide;
+    @apply px-3 py-2.5 text-left font-semibold uppercase tracking-wide;
+    font-size: var(--text-table-header);
   }
 
   .school-table tbody tr {
@@ -127,10 +61,6 @@ All colors MUST be HSL.
 
   .school-table tbody tr:hover td {
     background-color: hsl(var(--table-hover));
-  }
-
-  .school-table tbody td.sticky-first-col {
-    background-color: hsl(var(--card));
   }
 
   .school-table tbody td.sticky-first-col {

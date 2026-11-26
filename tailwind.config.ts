@@ -13,7 +13,18 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-ui)"],
+      },
       colors: {
+        brand: "hsl(var(--brand))",
+        action: { DEFAULT: "hsl(var(--action))", foreground: "hsl(var(--action-text))" },
+        surface: { DEFAULT: "hsl(var(--surface-default))", canvas: "hsl(var(--surface-canvas))", header: "hsl(var(--surface-global-header))", table: "hsl(var(--surface-table-header))", selection: "hsl(var(--surface-selection))", active: "hsl(var(--surface-active))" },
+        "border-control": "hsl(var(--border-control))",
+        "status-low-grade": "hsl(var(--status-low-grade))",
+        "status-low-grade-bg": "hsl(var(--status-low-grade-bg))",
+        "status-pending": "hsl(var(--status-pending))",
+        "status-pending-bg": "hsl(var(--status-pending-bg))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -60,8 +71,18 @@ export default {
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "var(--radius-field)",
+        sm: "var(--radius-cell)",
+        button: "var(--radius-button)",
+        table: "var(--radius-table)",
+        card: "var(--radius-card)",
+        modal: "var(--radius-modal)",
+        tooltip: "var(--radius-tooltip)",
+      },
+      boxShadow: {
+        sm: "var(--shadow-subtle)",
+        surface: "var(--shadow-surface)",
+        overlay: "var(--shadow-overlay)",
       },
       keyframes: {
         "accordion-down": {

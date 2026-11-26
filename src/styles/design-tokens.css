@@ -1,0 +1,125 @@
+/* Soft Blue — source of truth for runtime tokens; HSL channels support Tailwind alpha modifiers.
+   Approved prototype: docs/design/soft-blue.tokens.json. See docs/design/DESIGN.md. */
+:root {
+  /* Semantic colors */
+  --brand: 216.716 38.728% 33.922%; /* #354F78 */
+  --action: 216.571 50.239% 40.980%; /* #345D9D */
+  --action-text: 0.000 0.000% 100.000%; /* #FFFFFF */
+  --surface-canvas: 212.308 61.905% 95.882%; /* #EEF4FB */
+  --surface-default: 0.000 0.000% 100.000%; /* #FFFFFF */
+  --text-main: 212.941 40.157% 24.902%; /* #263D59 */
+  --text-muted: 213.750 22.642% 41.569%; /* #526782 */
+  --border-subtle: 212.143 48.276% 88.627%; /* #D4E1F0 */
+  --surface-table-header: 214.737 65.517% 94.314%; /* #E7EFFA */
+  --surface-selection: 216.364 100.000% 93.529%; /* #DEEBFF */
+  --surface-active: 216.429 77.778% 92.941%; /* #DFEAFB */
+  --surface-global-header: 213.600 67.568% 92.745%; /* #E0EBF9 */
+  --status-low-grade: 351.346 50.485% 40.392%; /* #9B3342 */
+  --status-low-grade-bg: 350.769 100.000% 97.451%; /* #FFF2F4 */
+  --status-success: 142.785 64.228% 24.118%; /* #166534 */
+  --status-success-bg: 132.857 43.750% 93.725%; /* #E8F6EB */
+  --status-on-time-bg: 130.000 46.154% 94.902%; /* #ECF8EE */
+  --status-late: 22.727 82.500% 31.373%; /* #92400E */
+  --status-late-bg: 39.474 100.000% 92.549%; /* #FFF2D9 */
+  --status-pending: 352.222 52.941% 40.000%; /* #9C303E */
+  --status-pending-bg: 355.714 100.000% 97.255%; /* #FFF1F2 */
+  --border-control: 214.468 20.524% 55.098%; /* #7589A4 */
+  --focus: 216.571 50.239% 40.980%; /* #345D9D */
+  --surface-muted: 213.333 52.941% 96.667%; /* #F2F6FB */
+  --surface-stripe: 216.000 55.556% 98.235%; /* #F8FAFD */
+  --surface-hover: 213.333 75.000% 95.294%; /* #EAF2FC */
+  --status-absent: 351.346 50.485% 40.392%; /* #9B3342 */
+  --status-absent-bg: 350.769 100.000% 97.451%; /* #FFF2F4 */
+  --status-done: 216.571 50.239% 40.980%; /* #345D9D */
+  --status-done-bg: 214.737 65.517% 94.314%; /* #E7EFFA */
+  --status-legacy-pending: 22.727 82.500% 31.373%; /* #92400E */
+  --status-legacy-pending-bg: 39.474 100.000% 92.549%; /* #FFF2D9 */
+  --status-warning: 22.727 82.500% 31.373%; /* #92400E */
+  --status-warning-border: 39.101 52.047% 66.471%; /* #D6B77D */
+
+  /* Compatibility aliases: do not remove or change the meaning of these names. */
+  --background: var(--surface-canvas);
+  --foreground: var(--text-main);
+  --card: var(--surface-default);
+  --card-foreground: var(--text-main);
+  --popover: var(--surface-default);
+  --popover-foreground: var(--text-main);
+  --primary: var(--action);
+  --primary-foreground: var(--action-text);
+  --secondary: var(--surface-table-header);
+  --secondary-foreground: var(--brand);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-active);
+  --accent-foreground: var(--text-main);
+  --destructive: var(--status-low-grade);
+  --destructive-foreground: var(--action-text);
+  --border: var(--border-subtle);
+  --input: var(--border-control);
+  --ring: var(--focus);
+  --present: var(--status-success);
+  --present-foreground: var(--action-text);
+  --present-light: var(--status-success-bg);
+  --absent: var(--status-absent);
+  --absent-foreground: var(--action-text);
+  --absent-light: var(--status-absent-bg);
+  --done: var(--status-done);
+  --done-foreground: var(--action-text);
+  --done-light: var(--status-done-bg);
+  --not-done: var(--status-legacy-pending);
+  --not-done-foreground: var(--action-text);
+  --not-done-light: var(--status-legacy-pending-bg);
+  --warning: var(--status-warning);
+  --warning-foreground: var(--status-late);
+  --warning-light: var(--status-late-bg);
+  --warning-border: var(--status-warning-border);
+  --table-header: var(--surface-table-header);
+  --table-header-foreground: var(--text-muted);
+  --table-stripe: var(--surface-stripe);
+  --table-hover: var(--surface-hover);
+  --sidebar-background: var(--surface-global-header);
+  --sidebar-foreground: var(--text-main);
+  --sidebar-primary: var(--action);
+  --sidebar-primary-foreground: var(--action-text);
+  --sidebar-accent: var(--surface-active);
+  --sidebar-accent-foreground: var(--text-main);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--focus);
+
+  /* Typography — keep existing Inter import and 16px rem basis. */
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-body: 14px;
+  --text-table: 13px;
+  --text-table-header: 12px;
+  --text-meta: 12px;
+  --text-section: 16px;
+  --text-page: 20px;
+  --text-page-large: 24px;
+
+  /* Dimensions: target values for subsequent PRs; no forced layout heights here. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius: 8px;
+  --radius-field: 6px;
+  --radius-button: 6px;
+  --radius-cell: 5px;
+  --radius-table: 7px;
+  --radius-card: 8px;
+  --radius-modal: 12px;
+  --radius-tooltip: 9px;
+  --height-header: 49px;
+  --height-navigation: 39px;
+  --height-row-desktop: 34px;
+  --height-row-mobile: 36px;
+  --height-grade-input: 26px;
+  --shadow-subtle: 0 1px 2px hsl(var(--brand) / 0.06);
+  --shadow-surface: 0 2px 8px hsl(var(--brand) / 0.08);
+  --shadow-overlay: 0 6px 20px hsl(var(--brand) / 0.12);
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --motion-fast: 150ms;
+}
