@@ -28,7 +28,17 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-background">
-      <a href="#main-content" className="school-skip-link">Ir para o conteúdo principal</a>
+      <a
+        href="#main-content"
+        className="school-skip-link"
+        onClick={(event) => {
+          // HashRouter owns the URL hash; move focus without changing the route.
+          event.preventDefault();
+          const main = document.getElementById("main-content");
+          main?.focus({ preventScroll: true });
+          main?.scrollIntoView({ block: "start", behavior: "instant" });
+        }}
+      >Ir para o conteúdo principal</a>
       {/* Header */}
       <header
         className="app-header flex min-h-[var(--height-header)] min-w-0 items-center gap-2 border-b border-border bg-surface-header px-3 py-1.5 sm:gap-3 sm:px-4"
