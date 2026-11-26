@@ -372,15 +372,15 @@ export function ActivitySummary({
                           />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="right" align="center">
+                      <TooltipContent side="top" align="center" sideOffset={8}>
                         <TooltipArrow className="fill-card stroke-border" />
-                        <div className="flex max-w-full flex-wrap items-center gap-2">
+                        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                           <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold ${late ? "bg-[hsl(var(--status-late-bg))] text-[hsl(var(--status-late))]" : isDone ? "bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success))]" : "bg-status-pending-bg text-status-pending"}`}>
                             <StatusIcon size={16} aria-hidden="true" />
                             {statusLabel}
                           </span>
                           <span aria-hidden="true" className="hidden h-6 w-px shrink-0 bg-border sm:block" />
-                          <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="flex min-w-0 max-w-full items-center gap-1.5 break-words">
                             <CalendarDays size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
                             {isDone && record?.markedAt ? (
                               <span><span>Registrada em </span><strong className="font-semibold">{formatTooltipDate(record.markedAt)}</strong></span>
