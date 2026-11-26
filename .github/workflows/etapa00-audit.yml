@@ -42,6 +42,7 @@ jobs:
           test "$(git rev-parse HEAD)" = 61344e9b553ce2cb7608f5ce81ef7751e7f694fc
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
+          grep -qx "build=0" ../evidence/status.txt && grep -qx "test=0" ../evidence/status.txt
       - name: Browser audit
         shell: bash
         run: |
@@ -61,6 +62,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr03-soft-blue-61344e9
+          name: pr03-soft-blue-61344e9-reteste3
           path: evidence/
           retention-days: 14

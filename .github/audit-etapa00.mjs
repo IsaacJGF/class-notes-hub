@@ -52,23 +52,29 @@ await run('pr03-modal-teclado',async()=>{
 });
 await run('pr03-tooltip-estados',async()=>{
   await tab('AEP');const states=[];
-  for(const label of ['No prazo','Atrasada','Pendente']){
+  // Accessible label "Atrasado (70%)" differs from visual chip "Atrasada".
+  for(const [label,accessible] of [['No prazo',/No prazo/i],['Atrasada',/Atrasad[oa]/i],['Pendente',/Pendente/i]]){
     const buttons=p.getByRole('button',{name:/Aluno Fictício 0[1-9]: Atividade fictícia 1/});
     const count=await buttons.count();let chosen=null;
-    for(let i=0;i<count;i++){const b=buttons.nth(i);if((await b.getAttribute('aria-label')||'').toLowerCase().includes(label.toLowerCase())){chosen=b;break;}}
+    for(let i=0;i<count;i++){const b=buttons.nth(i);if(accessible.test(await b.getAttribute('aria-label')||'')){chosen=b;break;}}
     assert(chosen,'estado ausente na fixture: '+label);
-    await p.keyboard.press('Escape');await p.mouse.move(0,0);
-    await chosen.evaluate(el=>el.scrollIntoView({block:'center',inline:'center',behavior:'instant'}));
-    await p.waitForTimeout(200);await chosen.hover();
     const tip=p.locator('[data-school-tooltip][data-state="delayed-open"],[data-school-tooltip][data-state="instant-open"]').filter({hasText:label});
-    await tip.waitFor({state:'visible'});await p.waitForTimeout(180);
-    const box=await tip.boundingBox();
-    assert(box&&box.x>=-2&&box.y>=-2&&box.x+box.width<=width+2&&box.y+box.height<=height+2,'tooltip outside viewport: '+label+' '+JSON.stringify(box));
-    await shot('pr03-tooltip-'+label.replaceAll(' ','-'));
-    states.push({label,hover:true,box});
+    const phase=async(name,fn)=>{try{return await fn()}catch(e){const diag=await p.evaluate(()=>({active:document.activeElement?.outerHTML?.slice(0,700),tips:[...document.querySelectorAll('[data-school-tooltip]')].map(x=>({state:x.getAttribute('data-state'),text:x.textContent,rect:x.getBoundingClientRect().toJSON()})),scrollY}));throw Error(label+' / '+name+': '+String(e)+' / '+JSON.stringify(diag));}};
+    const show=async(mode)=>phase(mode,async()=>{await tip.waitFor({state:'visible'});await p.waitForTimeout(180);const box=await tip.boundingBox();assert(box&&box.x>=-2&&box.y>=-2&&box.x+box.width<=width+2&&box.y+box.height<=height+2,'tooltip outside viewport '+JSON.stringify(box));return box;});
+    await p.keyboard.press('Escape');await p.mouse.move(0,0);
+    await chosen.evaluate(el=>el.scrollIntoView({block:'center',inline:'center',behavior:'instant'}));await p.waitForTimeout(250);
+    await chosen.hover();const box=await show('hover');await shot('pr03-tooltip-'+label.replaceAll(' ','-'));
     await p.keyboard.press('Escape');await p.mouse.move(0,0);await tip.waitFor({state:'hidden'});
-    await chosen.focus();await tip.waitFor({state:'visible'});states[states.length-1].keyboardFocus=true;
+    // A real focus transition on an already visible cell, without browser-induced
+    // scroll (Radix closes tooltip on scroll). Do not synthesize focus events.
+    await chosen.evaluate(el=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();el.blur();});
+    await p.waitForTimeout(250);
+    await chosen.evaluate(el=>el.focus({preventScroll:true}));
+    assert(await chosen.evaluate(el=>el===document.activeElement),'focus not on activity cell');
+    const keyboardBox=await show('keyboard focus');await shot('pr03-tooltip-foco-'+label.replaceAll(' ','-'));
     await p.keyboard.press('Escape');await tip.waitFor({state:'hidden'});await chosen.evaluate(el=>el.blur());
+    states.push({label,hover:true,keyboardFocus:true,escape:true,box,keyboardBox});
+    console.log('TOOLTIP_OK '+tag+' '+label);
   }
   assert.equal(states.length,3);return states;
 });
