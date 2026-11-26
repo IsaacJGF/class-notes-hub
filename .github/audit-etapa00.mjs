@@ -30,6 +30,46 @@ const storage=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('school_control
 const inputs=()=>p.locator('input[data-spreadsheet-input]:visible');
 await run('cadastro',async()=>{await p.goto(url);await p.getByRole('button',{name:'Turma Fictícia A',exact:true}).waitFor();await p.evaluate(()=>document.fonts.ready);await shot('cadastro');assert.equal((await storage()).students.length,41);return metrics()});
 await run('geral',async()=>{await p.getByRole('button',{name:'Turma Fictícia A',exact:true}).click();await p.getByText('Resumo geral das notas',{exact:true}).waitFor();await shot('geral');assert.equal(await p.locator('table tbody tr:visible').count(),41);return metrics()});
+await run('pr06-geral-totais',async()=>{
+ const period=p.getByLabel('Selecionar trimestre');const before=await storage();
+ const region=p.getByRole('region',{name:'Planilha geral de notas'});const fmt=n=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+ const round=n=>Math.round((n+Number.EPSILON)*100)/100;
+ const students=fixture.students.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'}));const blocks=['AEP','AL','AV','AG','TESTE','PE'];const summaries=[];
+ for(const term of [1,2,3]){
+  await period.selectOption(String(term));await region.locator('[data-spreadsheet-grid="overview-audit-a-'+term+'"]').first().waitFor();
+  const rows=await region.locator('tbody tr').evaluateAll(rs=>rs.map(r=>[...r.querySelectorAll('[data-spreadsheet-cell]')].map(c=>{const clone=c.cloneNode(true);clone.querySelectorAll('svg,.sr-only,button').forEach(n=>n.remove());return {value:c.getAttribute('data-spreadsheet-value'),visual:clone.textContent.trim(),low:c.getAttribute('data-overview-below')==='true'};})));
+  const components=fixture.evaluationComponents.filter(x=>x.turmaId==='audit-a'&&x.term===term);const activities=fixture.activities.filter(x=>x.turmaId==='audit-a'&&x.term===term);
+  assert.equal(rows.length,41);let verified=0,low=0;
+  for(let i=0;i<students.length;i++){
+   const student=students[i],expected=Object.fromEntries(blocks.map(b=>[b,0]));
+   for(const comp of components){
+    let value=0;
+    if(comp.kind==='activities'){let weighted=0;for(const a of activities){const r=fixture.activityRecords.find(x=>x.studentId===student.id&&x.activityId===a.id);if(r?.done)weighted+=a.deadline&&r.markedAt&&!r.overrideOnTime&&r.markedAt>a.deadline?0.7:1;}value=activities.length?round(comp.maxPoints*weighted/activities.length):0;}
+    else value=fixture.componentScores.find(x=>x.studentId===student.id&&x.componentId===comp.id)?.score??0;
+    expected[comp.blockId]+=value;
+   }
+   const total=round(blocks.reduce((sum,b)=>sum+expected[b],0));
+   assert.equal(rows[i][0].value,student.name);assert.equal(rows[i].length,8);
+   for(let j=0;j<7;j++){const n=j===6?total:expected[blocks[j]],isLow=j===6?n<70:blocks[j]!=='PE'&&n<14;const actual=rows[i][j+1];
+    assert.equal(actual.value,fmt(n),student.name+' / term '+term+' / column '+j);assert.equal(actual.visual,fmt(n));assert.equal(actual.low,isLow);verified++;if(isLow)low++;
+   }
+  }
+  await p.evaluate(()=>window.scrollTo(0,0));await region.evaluate(e=>{e.scrollTop=0;e.scrollLeft=0;});await shot('pr06-geral-trimestre-'+term);
+  summaries.push({term,students:rows.length,verifiedValues:verified,belowAverageCells:low,metrics:await metrics()});
+ }
+ await period.selectOption('1');await region.locator('[data-spreadsheet-grid="overview-audit-a-1"]').first().waitFor();assert.deepEqual(await storage(),before,'Geral must not modify records');return {summaries,unchanged:true};
+});
+await run('pr06-geral-copia-busca',async()=>{
+ const region=p.getByRole('region',{name:'Planilha geral de notas'});const before=await storage();
+ const cells=region.locator('td[data-overview-column="final"]');const expected=await cells.evaluateAll(xs=>xs.map(x=>x.getAttribute('data-spreadsheet-value')));assert.equal(expected.length,41);
+ await region.getByRole('button',{name:'Nota final',exact:true}).click();assert.equal(await region.locator('td[data-spreadsheet-selected=true]').count(),41);
+ await p.evaluate(()=>navigator.clipboard.writeText('__PR06_SENTINEL__'));await p.keyboard.press('Control+c');await p.waitForFunction(async()=>await navigator.clipboard.readText()!=='__PR06_SENTINEL__',null,{timeout:2500});
+ const copied=(await p.evaluate(()=>navigator.clipboard.readText())).split(String.fromCharCode(10)).map(x=>x.replace(String.fromCharCode(13),''));
+ assert.deepEqual(copied,expected);await shot('pr06-geral-copia');
+ await p.keyboard.press('Control+f');const search=p.getByRole('textbox',{name:'Pesquisar aluno',exact:true});await search.waitFor();assert.equal(await search.locator('xpath=ancestor::*[contains(@class,"class-context")]').count(),1);
+ await search.fill('Aluno Ficticio 03');assert.equal(await cells.count(),1);await shot('pr06-geral-filtrada');await search.fill('nome inexistente 123');await region.getByText('Nenhum aluno encontrado.',{exact:true}).waitFor();await shot('pr06-geral-vazia');await p.keyboard.press('Escape');assert.equal(await cells.count(),41);
+ assert.deepEqual(await storage(),before);return {copiedValues:copied.length,accentSearch:true,emptyState:true,unchanged:true};
+});
 await run('modal-aluno',async()=>{await p.getByRole('button',{name:'Adicionar aluno',exact:true}).click();await p.getByRole('dialog').waitFor();await shot('modal-aluno');await p.keyboard.press('Escape');assert.equal((await storage()).students.length,41)});
 await run('modal-configuracao',async()=>{await p.getByRole('button',{name:'Configurar divisões'}).click();await p.getByRole('dialog').waitFor();await shot('modal-configuracao');await p.keyboard.press('Escape')});
 await run('menu-aluno',async()=>{await p.getByRole('button',{name:/Ações de Aluno Fictício 01/}).click();await shot('menu-aluno');await p.keyboard.press('Escape')});
@@ -163,6 +203,16 @@ await run('pr05-alertas',async()=>{
  await alert.locator('summary').click();const input=alert.getByRole('spinbutton',{name:'Limite de aproveitamento (%)',exact:true});assert.equal(await input.inputValue(),'50');assert(await alert.locator('span.rounded-cell').count()>0);await shot('pr05-alerta-expandido');
  await input.fill('100');await p.waitForFunction(()=>localStorage.getItem('alert_activity_threshold')==='100');assert.equal(await input.inputValue(),'100');assert(await alert.getByText('Limite atual: 100%',{exact:true}).isVisible());await shot('pr05-alerta-limite');
  await input.fill('50');await p.waitForFunction(()=>localStorage.getItem('alert_activity_threshold')==='50');await alert.locator('summary').click();assert.equal(await alert.getAttribute('open'),null);return {expanded:true,thresholdPreserved:true,thresholdChangePersisted:true,independentFixture:true};
+});
+await run('pr06-historico-geral',async()=>{
+ const before=await storage();const student=before.students.find(x=>x.id==='s1');assert.equal(student.turma,'Turma Fictícia B');
+ const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});await nav.getByRole('button',{name:'Turma Fictícia B',exact:true}).click();await tab('Geral');
+ const region=p.getByRole('region',{name:'Planilha geral de notas'});const open=region.getByRole('button',{name:'Ver histórico de atividades de Aluno Fictício 01',exact:true});await open.click();
+ const history=region.getByText('Histórico de atividades de Aluno Fictício 01',{exact:true});await history.waitFor();
+ const expected=before.activityRecords.filter(r=>r.studentId==='s1'&&before.activities.some(a=>a.id===r.activityId&&a.turmaId!=='audit-b'));assert.equal(expected.length,15);
+ const panel=history.locator('xpath=../..');const sections=panel.locator('section');assert.equal(await sections.count(),3);assert.equal(await panel.getByText(/^(Não entregue|Feita com atraso|No prazo)$/).count(),15);
+ await shot('pr06-historico');await region.getByRole('button',{name:'Ocultar histórico de atividades de Aluno Fictício 01',exact:true}).click();await history.waitFor({state:'hidden'});
+ assert.deepEqual(await storage(),before);return {records:expected.length,terms:3,unchanged:true};
 });
 results.push({tag,name:'pageerrors',status:errors.length?'fail':'pass',errors});flush();await context.close();
 }}finally{await browser.close();flush()}
