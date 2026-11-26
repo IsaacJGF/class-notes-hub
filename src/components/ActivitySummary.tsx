@@ -202,7 +202,7 @@ export function ActivitySummary({
   };
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <section className="gradebook-search-panel overflow-clip rounded-xl border border-border bg-card shadow-sm">
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold">Atividade</h3>
@@ -287,7 +287,7 @@ export function ActivitySummary({
         </div>
       </details>}
 
-      <div className="flex justify-end border-b border-border bg-card px-3 py-2 sm:px-4">
+      <div className="gradebook-search-toolbar flex justify-end border-b border-border bg-card px-3 py-1.5 sm:px-4">
         {renderStudentSearch("gradebook")}
       </div>
 

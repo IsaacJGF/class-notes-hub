@@ -51,19 +51,27 @@ export function TurmaTab({
     setTimeout(() => {
       const input = searchInputRef.current;
       if (!input) return;
-      input.focus();
+      input.focus({ preventScroll: true });
       input.select();
+      const bounds = input.getBoundingClientRect();
+      // Geral keeps its original header search. If the field is genuinely outside the
+      // viewport (e.g. another scroll container), reveal it rather than focus invisibly.
+      if (bounds.top < 0 || bounds.bottom > window.innerHeight) {
+        input.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+      }
     }, 50);
   };
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "f") {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
         event.preventDefault();
         setShowSearch(true);
         focusAndSelectSearchInput();
       }
       if (event.key === "Escape" && showSearch) {
+        if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
         setShowSearch(false);
         setSearchQuery("");
       }
@@ -93,13 +101,13 @@ export function TurmaTab({
   );
 
   const renderStudentSearch = (placement: "header" | "gradebook") => showSearch ? (
-    <div className={`flex min-w-0 items-center gap-1 rounded border border-border bg-background px-2 py-1 ${placement === "header" ? "flex-1 sm:w-[260px]" : "w-full sm:w-56"}`}>
+    <div className={`flex min-w-0 items-center gap-1 rounded-button border border-input bg-card px-2 focus-within:ring-2 focus-within:ring-ring/40 ${placement === "header" ? "flex-1 sm:w-[260px]" : "w-full sm:w-56"}`}>
       <Search size={14} className="shrink-0 text-muted-foreground" />
       <input
         ref={searchInputRef}
         type="text"
         placeholder="Pesquisar aluno..."
-        className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none"
+        className="min-h-9 w-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground sm:min-h-8"
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.currentTarget.value)}
         aria-label="Pesquisar aluno"
@@ -107,7 +115,7 @@ export function TurmaTab({
       {searchQuery && <span className="mr-1 shrink-0 text-xs text-muted-foreground">{visibleStudentCount}/{allTurmaStudents.length}</span>}
       <button
         onClick={() => { setShowSearch(false); setSearchQuery(""); }}
-        className="flex min-h-9 min-w-9 shrink-0 touch-manipulation items-center justify-center rounded p-1 hover:opacity-70"
+        className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-button p-1 text-muted-foreground hover:bg-muted sm:min-h-8 sm:min-w-8"
         aria-label="Fechar pesquisa"
       >
         <X size={14} />
@@ -116,8 +124,7 @@ export function TurmaTab({
   ) : (
     <button
       onClick={() => { setShowSearch(true); focusAndSelectSearchInput(); }}
-      className={`flex min-h-9 touch-manipulation items-center justify-center gap-1 rounded border border-border px-2 py-1.5 text-xs hover:opacity-80 ${placement === "gradebook" ? "w-full sm:w-auto" : ""}`}
-      style={{ color: "hsl(var(--muted-foreground))" }}
+      className={`flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-button border border-input bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:min-h-8 ${placement === "gradebook" ? "w-full sm:w-auto" : ""}`}
       title="Pesquisar (Ctrl+F)"
     >
       <Search size={12} /> Pesquisar
@@ -133,12 +140,11 @@ export function TurmaTab({
   };
 
   return (
-    <div className="space-y-3 p-2 sm:space-y-4 sm:p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="min-w-0 space-y-2 p-2 sm:space-y-3 sm:p-3">
+      <div className="class-context flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div
-            className="rounded-lg px-3 py-1.5 text-xs font-bold sm:px-4 sm:py-2 sm:text-sm"
-            style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+            className="rounded-button bg-surface-active px-2.5 py-1 text-sm font-semibold text-brand [overflow-wrap:anywhere]"
           >
             {turma.name}
           </div>
@@ -146,11 +152,10 @@ export function TurmaTab({
             {allTurmaStudents.length} aluno(s) · {turmaActivities.length} atividade(s) · {getTermLabel(selectedTerm)}
           </span>
         </div>
-        <div className="flex items-center gap-2 sm:ml-auto">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto sm:flex-nowrap">
           <button
             onClick={() => setStudentSortOrder((previous) => previous === "asc" ? "desc" : "asc")}
-            className="min-h-9 touch-manipulation rounded border border-border px-2 py-1.5 text-xs font-medium hover:opacity-80"
-            style={{ color: "hsl(var(--muted-foreground))" }}
+            className="min-h-11 shrink-0 touch-manipulation rounded-button border border-input bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:min-h-8"
             title="Alternar ordem alfabética"
           >
             {studentSortOrder === "asc" ? "A → Z" : "Z → A"}
@@ -158,8 +163,7 @@ export function TurmaTab({
           {activeGradebookTab === "overview" && renderStudentSearch("header")}
           <button
             onClick={() => setAddStudentDialogOpen(true)}
-            className="flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm hover:opacity-90"
-            style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+            className="flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-button bg-action px-3 py-1 text-xs font-semibold text-action-foreground hover:bg-action/90 sm:min-h-8"
           >
             <UserPlus size={14} />Adicionar aluno
           </button>

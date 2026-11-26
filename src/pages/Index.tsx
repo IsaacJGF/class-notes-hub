@@ -27,35 +27,34 @@ const Index = () => {
   const currentTurma = school.data.turmas.find((t) => t.id === activeTab);
 
   return (
-    <div className="flex min-h-screen flex-col" style={{ backgroundColor: "hsl(var(--background))" }}>
+    <div className="flex min-h-screen min-w-0 flex-col bg-background">
       {/* Header */}
       <header
-        className="flex items-center gap-2 sm:gap-3 border-b border-border px-3 sm:px-6 py-2 sm:py-3 shadow-sm"
-        style={{ backgroundColor: "hsl(var(--primary))" }}
+        className="app-header flex min-h-[var(--height-header)] min-w-0 items-center gap-2 border-b border-border bg-surface-header px-3 py-1.5 sm:gap-3 sm:px-4"
       >
         <img
           src="/app-icon.svg"
           alt="Ícone Diário do Professor"
-          className="h-7 w-7 sm:h-8 sm:w-8 rounded-md border border-white/20"
+          className="h-8 w-8 shrink-0 rounded-md border border-border"
         />
-        <div>
-          <h1 className="text-sm sm:text-base font-bold leading-tight" style={{ color: "hsl(var(--primary-foreground))" }}>
+        <div className="min-w-0">
+          <h1 className="text-sm font-semibold leading-tight text-brand sm:text-base">
             Diário do Professor
           </h1>
-          <p className="text-[10px] sm:text-xs opacity-70 hidden sm:block" style={{ color: "hsl(var(--primary-foreground))" }}>
+          <p className="hidden text-xs leading-tight text-muted-foreground sm:block">
             Notas e atividades
           </p>
         </div>
-        <label className="ml-auto flex items-center gap-2 text-xs" style={{ color: "hsl(var(--primary-foreground))" }}>
-          <span className="hidden sm:inline opacity-80">Período</span>
+        <label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="hidden sm:inline">Período</span>
           <select
             value={selectedTerm}
             onChange={(event) => setSelectedTerm(Number(event.target.value) as AcademicTerm)}
-            className="rounded border border-white/25 bg-white/10 px-2 py-1.5 text-xs font-semibold outline-none focus:border-white/60"
+            className="min-h-11 max-w-[42vw] rounded-button border border-input bg-card px-2 py-1 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:max-w-none"
             aria-label="Selecionar trimestre"
           >
             {ACADEMIC_TERMS.map((term) => (
-              <option key={term} value={term} className="text-slate-900">
+              <option key={term} value={term} className="text-foreground">
                 {getTermLabel(term)}
               </option>
             ))}
@@ -64,39 +63,27 @@ const Index = () => {
       </header>
 
       {/* Tab bar - scrollable, touch-friendly */}
-      <div
-        className="flex gap-0.5 overflow-x-auto border-b border-border px-2 sm:px-4 pt-1 sm:pt-2 scrollbar-hide"
-        style={{ backgroundColor: "hsl(var(--card))", WebkitOverflowScrolling: "touch" }}
-      >
+      <nav aria-label="Cadastro e turmas" className="app-class-navigation nav-scroll flex min-w-0 items-stretch gap-0.5 overflow-x-auto border-b border-border bg-card px-2 sm:px-4">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap rounded-t-md px-3 sm:px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors min-h-[44px] touch-manipulation"
-              style={
-                isActive
-                  ? {
-                      backgroundColor: "hsl(var(--primary))",
-                      color: "hsl(var(--primary-foreground))",
-                      borderBottom: "2px solid hsl(var(--primary))",
-                    }
-                  : {
-                      color: "hsl(var(--muted-foreground))",
-                      borderBottom: "2px solid transparent",
-                    }
-              }
+              aria-pressed={isActive}
+              className={`flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-[var(--height-navigation)] sm:px-4 sm:text-sm ${isActive ? "border-action text-action font-semibold" : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >
               {tab.icon}
               {tab.label}
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Content */}
-      <main className="flex-1 overflow-auto">
+      {/* Keep horizontal overflow inside the existing table wrappers; page scrolling allows
+          the local search toolbar to remain sticky within its own gradebook panel. */}
+      <main className="min-w-0 flex-1">
         {activeTab === "cadastro" && (
           <StudentRegistration
             data={school.data}

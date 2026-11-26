@@ -503,7 +503,7 @@ export function Gradebook({
 
     const gridId = `branch-${turma.id}-${term}-${component.id}`;
     return (
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="gradebook-search-panel overflow-clip rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-4 py-3">
           <div className="min-w-0">
             <h3 className="font-semibold">{component.name}</h3>
@@ -513,7 +513,7 @@ export function Gradebook({
             </p>
           </div>
         </div>
-        <div className="flex justify-end border-b border-border bg-card px-4 py-2">
+        <div className="gradebook-search-toolbar flex justify-end border-b border-border bg-card px-3 py-1.5 sm:px-4">
           {renderStudentSearch("gradebook")}
         </div>
         <div className="overflow-x-auto">
@@ -658,7 +658,7 @@ export function Gradebook({
       onClick={handleSpreadsheetColumnClick}
       onCopy={handleSpreadsheetCopy}
       onPaste={handleSpreadsheetPaste}
-      className="section-card overflow-hidden"
+      className="section-card min-w-0 overflow-clip"
     >
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card px-4 py-4 sm:px-5">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><Calculator size={20} /></div>
@@ -677,10 +677,10 @@ export function Gradebook({
       </div>
       <div className="p-3 sm:p-5">
         <Tabs defaultValue="overview" onValueChange={onActiveTabChange} className="space-y-4">
-          <div className="overflow-x-auto pb-1">
-            <TabsList aria-label="Blocos de notas" className="inline-flex h-auto min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1 sm:min-w-0">
-              <TabsTrigger value="overview" className="min-h-10 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm">Geral</TabsTrigger>
-              {componentsByBlock.map((block) => <TabsTrigger key={block.id} value={block.id} className="min-h-10 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm">{block.id === "PE" ? "Pontuação extra" : block.label}</TabsTrigger>)}
+          <div className="nav-scroll min-w-0 overflow-x-auto pb-1">
+            <TabsList aria-label="Blocos de notas" className="inline-flex h-auto min-w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0 text-muted-foreground sm:min-w-0">
+              <TabsTrigger value="overview" className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 text-xs hover:bg-muted/60 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-action data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-action data-[state=active]:shadow-none sm:min-h-[var(--height-navigation)] sm:text-sm">Geral</TabsTrigger>
+              {componentsByBlock.map((block) => <TabsTrigger key={block.id} value={block.id} className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent px-3 text-xs hover:bg-muted/60 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-action data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-action data-[state=active]:shadow-none sm:min-h-[var(--height-navigation)] sm:text-sm">{block.id === "PE" ? "Pontuação extra" : block.label}</TabsTrigger>)}
             </TabsList>
           </div>
 
@@ -849,9 +849,9 @@ export function Gradebook({
               {renderBlockDetailSheet(block)}
 
               <Tabs key={block.id + "-" + block.components.map((component) => component.id).join("-")} defaultValue={block.components[0]?.id} className="space-y-3">
-                <div className="overflow-x-auto pb-1">
-                  <TabsList aria-label={"Ramificações de " + block.label} className="inline-flex h-auto min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1 sm:min-w-0">
-                    {block.components.map((component) => <TabsTrigger key={component.id} value={component.id} className="min-h-10 max-w-64 gap-2 rounded-lg px-4 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"><span className="truncate">{component.name}</span>{component.kind === "activities" && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">automática</span>}</TabsTrigger>)}
+                <div className="nav-scroll min-w-0 overflow-x-auto pb-1">
+                  <TabsList aria-label={"Ramificações de " + block.label} className="inline-flex h-auto min-w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0 text-muted-foreground sm:min-w-0">
+                    {block.components.map((component) => <TabsTrigger key={component.id} value={component.id} className="min-h-11 max-w-64 shrink-0 gap-2 rounded-none border-b-2 border-transparent px-3 text-xs hover:bg-muted/60 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-action data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-action data-[state=active]:shadow-none sm:min-h-[var(--height-navigation)] sm:text-sm"><span className="truncate">{component.name}</span>{component.kind === "activities" && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">automática</span>}</TabsTrigger>)}
                   </TabsList>
                 </div>
                 {block.components.map((component) => <TabsContent key={component.id} value={component.id} className="mt-0">{renderBranchTable(block, component)}</TabsContent>)}

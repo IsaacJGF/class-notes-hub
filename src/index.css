@@ -230,3 +230,16 @@
     @apply flex-col items-start;
   }
 }
+
+/* PR 02: navigation and locally sticky search; table scroll wrappers remain intact. */
+@layer components {
+  .nav-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border-control)) hsl(var(--surface-default));
+  }
+  .gradebook-search-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+  }
+}
