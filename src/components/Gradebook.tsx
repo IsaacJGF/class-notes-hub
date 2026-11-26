@@ -166,9 +166,12 @@ export function Gradebook({
     const anchorColumn = event.shiftKey && previous?.gridId === gridId ? previous.anchorColumn : column;
     updateSpreadsheetSelection({ gridId, anchorRow, anchorColumn, focusRow: row, focusColumn: column });
     spreadsheetDragging.current = true;
-    if (!target?.closest("input[data-spreadsheet-input]")) {
+    // Shift+click extends the spreadsheet range rather than selecting native text.
+    // Ordinary clicks inside an input still enter editing mode.
+    if (event.shiftKey || !target?.closest("input[data-spreadsheet-input]")) {
       event.preventDefault();
-      cell.focus();
+      window.getSelection()?.removeAllRanges();
+      cell.focus({ preventScroll: true });
     }
   };
 
@@ -183,6 +186,9 @@ export function Gradebook({
     if (!Number.isFinite(row) || !Number.isFinite(column)) return;
     if (row === selection.focusRow && column === selection.focusColumn) return;
     updateSpreadsheetSelection({ ...selection, focusRow: row, focusColumn: column });
+    // Moving to a different cell while dragging is range selection, not editing.
+    window.getSelection()?.removeAllRanges();
+    cell.focus({ preventScroll: true });
   };
 
   const handleSpreadsheetColumnClick = (event: ReactMouseEvent<HTMLElement>) => {
