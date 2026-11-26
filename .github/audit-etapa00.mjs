@@ -224,6 +224,50 @@ await run('pr06-historico-geral',async()=>{
  await shot('pr06-historico');await assertOverviewWidth('Historico aberto');await region.getByRole('button',{name:'Ocultar histórico de atividades de Aluno Fictício 01',exact:true}).click();await history.waitFor({state:'hidden'});
  assert.deepEqual(await storage(),before);return {records:expected.length,terms:3,unchanged:true};
 });
+await run('pr07-teclado-foco',async()=>{
+ const before=await storage();await p.reload();await p.getByRole('navigation',{name:'Cadastro e turmas'}).waitFor();assert.equal(await p.locator('html').getAttribute('lang'),'pt-BR');
+ const skip=p.getByRole('link',{name:'Ir para o conteúdo principal'});await p.keyboard.press('Tab');assert(await skip.evaluate(e=>e===document.activeElement));await p.keyboard.press('Enter');await p.waitForFunction(()=>document.activeElement?.id==='main-content');await shot('pr07-salto-conteudo');
+ const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});const turma=nav.getByRole('button',{name:'Turma Fictícia A',exact:true});await turma.focus();await p.keyboard.press('Enter');assert.equal(await turma.getAttribute('aria-pressed'),'true');
+ const geral=p.getByRole('tab',{name:'Geral',exact:true});await geral.focus();await p.keyboard.press('ArrowRight');assert.equal(await p.getByRole('tab',{name:'AEP',exact:true}).getAttribute('aria-selected'),'true');await p.keyboard.press('ArrowRight');assert.equal(await p.getByRole('tab',{name:'AL',exact:true}).getAttribute('aria-selected'),'true');
+ const region=p.getByRole('region',{name:'Planilha de AL',exact:true});await region.waitFor();const grades=region.locator('input[data-spreadsheet-input]');await grades.first().focus();const outline=await grades.first().evaluate(e=>({width:getComputedStyle(e).outlineWidth,style:getComputedStyle(e).outlineStyle}));assert.equal(outline.style,'solid');assert(parseFloat(outline.width)>=2);await shot('pr07-foco-nota');await p.keyboard.press('Tab');assert(await grades.nth(1).evaluate(e=>e===document.activeElement),'Tab must advance to next grade');
+ await p.keyboard.press('Control+f');const search=p.getByRole('textbox',{name:'Pesquisar aluno',exact:true});await search.waitFor();await p.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Pesquisar aluno');await search.fill('Aluno Ficticio');await p.getByRole('status').filter({hasText:/[0-9]+\/[0-9]+/}).waitFor();await p.keyboard.press('Escape');await p.waitForFunction(()=>document.activeElement?.getAttribute('title')==='Pesquisar (Ctrl+F)');await shot('pr07-foco-pesquisa');
+ const add=p.getByRole('button',{name:'Adicionar aluno',exact:true}).first();await add.focus();await p.keyboard.press('Enter');const dialog=p.getByRole('dialog');await dialog.waitFor();await p.keyboard.press('Tab');assert(await dialog.evaluate(e=>e.contains(document.activeElement)));await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await p.waitForFunction(()=>document.activeElement?.textContent?.trim()==='Adicionar aluno');
+ const config=p.getByRole('button',{name:'Configurar divisões',exact:true});await config.focus();await p.keyboard.press('Enter');await dialog.waitFor();await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await p.waitForFunction(()=>document.activeElement?.textContent?.trim()==='Configurar divisões');assert.deepEqual(await storage(),before);return {skipLink:true,arrowTabs:true,gradeTab:true,searchReturn:true,addModalReturn:true,configModalReturn:true,outline};
+});
+await run('pr07-movimento-contraste',async()=>{
+ const before=await storage();await p.emulateMedia({reducedMotion:'reduce'});
+ try{
+  assert(await p.evaluate(()=>matchMedia('(prefers-reduced-motion: reduce)').matches));
+  const add=p.getByRole('button',{name:'Adicionar aluno',exact:true}).first();await add.click();const dialog=p.getByRole('dialog');await dialog.waitFor();
+  const durations=await dialog.evaluate(e=>({animation:getComputedStyle(e).animationDuration,transition:getComputedStyle(e).transitionDuration}));
+  assert(durations.animation.split(',').every(x=>parseFloat(x)<=.001));assert(durations.transition.split(',').every(x=>parseFloat(x)===0));await shot('pr07-movimento-reduzido');
+  const contrast=await dialog.evaluate(e=>{
+   const primary=e.querySelector('button[type=submit]');const ctx=document.createElement('canvas').getContext('2d');
+   const rgb=value=>{ctx.fillStyle=value;const v=ctx.fillStyle;if(v.startsWith('#'))return v.slice(1).match(/../g).map(x=>parseInt(x,16));return v.match(/[0-9.]+/g).slice(0,3).map(Number);};
+   const lum=value=>rgb(value).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((a,b,i)=>a+b*[.2126,.7152,.0722][i],0);
+   const ratio=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
+   const bg=getComputedStyle(e).backgroundColor;const title=e.querySelector('h2');const input=e.querySelector('input');return {title:ratio(getComputedStyle(title).color,bg),body:ratio(getComputedStyle(e.querySelector('p')).color,bg),action:ratio(getComputedStyle(primary).color,getComputedStyle(primary).backgroundColor),field:ratio(getComputedStyle(input).borderTopColor,getComputedStyle(input).backgroundColor)};
+  });
+  assert(contrast.title>=4.5&&contrast.body>=4.5&&contrast.action>=4.5&&contrast.field>=3,JSON.stringify(contrast));await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+  assert.deepEqual(await storage(),before);return {durations,contrast};
+ }finally{await p.emulateMedia({reducedMotion:'no-preference'});}
+});
+await run('pr07-reflow-ampliacao',async()=>{
+ const before=await storage();const layouts=[];
+ try{
+  for(const [w,h] of [[683,384],[320,568]]){
+   await p.setViewportSize({width:w,height:h});const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});await nav.getByRole('button',{name:'Cadastro',exact:true}).click();
+   const check=async(label)=>{const m=await p.evaluate(()=>({viewport:innerWidth,page:document.documentElement.scrollWidth,body:document.body.scrollWidth}));assert(m.page<=w+1&&m.body<=w+1,label+' '+JSON.stringify(m));return m;};
+   await p.evaluate(()=>window.scrollTo(0,0));const cadastro=await check('Cadastro');await shot('pr07-reflow-'+w+'-cadastro');
+   await nav.getByRole('button',{name:'Turma Fictícia A',exact:true}).click();await tab('Geral');const geral=await check('Geral');const region=p.getByRole('region',{name:'Planilha geral de notas'});const last=await region.evaluate(e=>{e.scrollLeft=e.scrollWidth;const r=e.getBoundingClientRect(),t=e.querySelector('th[data-overview-column="final"]').getBoundingClientRect();return t.right<=r.right+1&&t.left>=r.left-1;});assert(last,'Final not reachable');await shot('pr07-reflow-'+w+'-geral');
+   await tab('AL');const al=await check('AL');const input=p.getByRole('region',{name:'Planilha de AL',exact:true}).locator('input[data-spreadsheet-input]').first();await input.scrollIntoViewIfNeeded();await input.focus();assert(await input.evaluate(e=>e===document.activeElement));await shot('pr07-reflow-'+w+'-notas');
+   await tab('AEP');const atividade=await check('Atividades');await shot('pr07-reflow-'+w+'-atividades');
+   await p.getByRole('button',{name:'Adicionar aluno',exact:true}).first().click();const dialog=p.getByRole('dialog');await dialog.waitFor();await p.waitForTimeout(180);const box=await dialog.boundingBox();assert(box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=w+1&&box.y+box.height<=h+1,'dialog outside viewport '+JSON.stringify(box));await shot('pr07-reflow-'+w+'-modal');await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+   layouts.push({width:w,height:h,cadastro,geral,al,atividade,finalReachable:last,dialog:box});
+  }
+  assert.deepEqual(await storage(),before);return {layouts,method:'viewport emulation, not native browser/Electron zoom'};
+ }finally{await p.setViewportSize({width,height});}
+});
 results.push({tag,name:'pageerrors',status:errors.length?'fail':'pass',errors});flush();await context.close();
 }}finally{await browser.close();flush()}
 if(results.some(r=>r.status==='fail'))process.exitCode=1;

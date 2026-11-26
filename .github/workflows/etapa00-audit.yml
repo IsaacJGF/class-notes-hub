@@ -1,7 +1,7 @@
-name: PR 06 - auditoria da Geral Soft Blue
+name: PR 07 - auditoria de acessibilidade Soft Blue
 on:
   push:
-    branches: [audit/pr06-soft-blue]
+    branches: [audit/pr07-soft-blue]
 permissions:
   contents: read
 jobs:
@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: e2a360a79f552313cc24a98ae760a458d4f37a03
+          ref: 52344fe0c10d58c92dd527fe3a1244fa3cc9f816
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
           done
           git status --porcelain > ../evidence/git-status.txt
           cat ../evidence/status.txt
-          test "$(git rev-parse HEAD)" = e2a360a79f552313cc24a98ae760a458d4f37a03
+          test "$(git rev-parse HEAD)" = 52344fe0c10d58c92dd527fe3a1244fa3cc9f816
           tail -n 15 ../evidence/test.txt
           tail -n 30 ../evidence/lint.txt
           grep -qx "build=0" ../evidence/status.txt && grep -qx "test=0" ../evidence/status.txt
@@ -62,6 +62,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr06-soft-blue-e2a360a-reteste2
+          name: pr07-soft-blue-52344fe
           path: evidence/
           retention-days: 14
