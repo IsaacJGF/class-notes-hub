@@ -143,13 +143,13 @@ await run('pr05-cadastro-filtros',async()=>{
 await run('pr05-atividades-prazos',async()=>{
  const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});await nav.getByRole('button',{name:'Turma Auditoria C',exact:true}).click();await tab('AEP');
  await p.getByText('Ainda não há atividades neste trimestre.',{exact:true}).waitFor();await shot('pr05-atividades-vazio');
- const form=p.getByRole('form',{name:'Cadastrar atividade'});const name=form.getByRole('textbox',{name:'Nome da atividade'});const date=form.locator('input[type=date]').first();const deadline=form.getByLabel('Prazo',{exact:true});const add=form.getByRole('button',{name:'Adicionar atividade'});
+ const form=p.getByRole('form',{name:'Cadastrar atividade'});const name=form.getByRole('textbox',{name:'Nome da atividade'});const date=form.getByLabel('Data da atividade',{exact:true});const deadline=form.getByRole('combobox',{name:'Prazo',exact:true});const add=form.getByRole('button',{name:'Adicionar atividade'});
  const before=await storage();const cls=before.turmas.find(x=>x.name==='Turma Auditoria C');const student=before.students.find(x=>x.name==='Aluno Auditoria Áureo');assert(cls&&student);
  assert(await add.isDisabled());await p.evaluate(()=>window.scrollTo(0,0));const box=await form.boundingBox();await shot('pr05-formulario-padrao');const results=[];
  for(const [mode,title,expected] of [['none','Auditoria sem prazo',null],['date','Auditoria data específica','2026-11-28'],['days','Auditoria prazo em dias','2026-11-30']]){
    await name.fill(title);await date.fill('2026-11-25');await deadline.selectOption(mode);
    if(mode==='date'){assert(await add.isDisabled());await form.getByLabel('Data limite',{exact:true}).fill(expected);}
-   if(mode==='days'){await form.locator('input[type=number]').fill('5');}
+   if(mode==='days'){await form.getByRole('spinbutton',{name:'Dias após a atividade',exact:true}).fill('5');}
    if(expected){await form.getByText('Vence em '+expected.split('-').reverse().join('/'),{exact:true}).waitFor();}
    assert(await add.isEnabled());await shot('pr05-formulario-'+mode);await add.click();await p.waitForFunction(({id,title})=>JSON.parse(localStorage.getItem('school_control_data')).activities.some(x=>x.turmaId===id&&x.name===title),{id:cls.id,title});
    const state=await storage();const activity=state.activities.find(x=>x.turmaId===cls.id&&x.name===title);assert.equal(activity.deadline??null,expected);assert.equal(activity.date,'2026-11-25');assert.equal(activity.term,1);assert(state.activityRecords.some(r=>r.studentId===student.id&&r.activityId===activity.id&&!r.done));results.push({mode,deadline:activity.deadline??null});
@@ -157,7 +157,12 @@ await run('pr05-atividades-prazos',async()=>{
  assert.equal((await storage()).activities.length,before.activities.length+3);assert((await p.evaluate(()=>document.documentElement.scrollWidth))<=width+1,'atividade overflow');await shot('pr05-atividades-criadas');return {formHeight:box.height,results,pendingRecords:true};
 });
 await run('pr05-alertas',async()=>{
- const alert=p.locator('.activity-alerts');await alert.waitFor({state:'visible'});await alert.locator('summary').click();await alert.getByText(/Aluno Auditoria Áureo/).waitFor();await shot('pr05-alerta-expandido');const input=alert.locator('input[type=number]');assert.equal(await input.inputValue(),'50');await alert.locator('summary').click();assert.equal(await alert.getAttribute('open'),null);return {expanded:true,thresholdPreserved:true};
+ const nav=p.getByRole('navigation',{name:'Cadastro e turmas'});await nav.getByRole('button',{name:'Turma Fictícia A',exact:true}).click();await tab('AEP');
+ const alert=p.locator('.activity-alerts');await alert.waitFor({state:'visible'});
+ const original=await p.evaluate(()=>localStorage.getItem('alert_activity_threshold'));assert.equal(original,'50');
+ await alert.locator('summary').click();const input=alert.getByRole('spinbutton',{name:'Limite de aproveitamento (%)',exact:true});assert.equal(await input.inputValue(),'50');assert(await alert.locator('span.rounded-cell').count()>0);await shot('pr05-alerta-expandido');
+ await input.fill('100');await p.waitForFunction(()=>localStorage.getItem('alert_activity_threshold')==='100');assert.equal(await input.inputValue(),'100');assert(await alert.getByText('Limite atual: 100%',{exact:true}).isVisible());await shot('pr05-alerta-limite');
+ await input.fill('50');await p.waitForFunction(()=>localStorage.getItem('alert_activity_threshold')==='50');await alert.locator('summary').click();assert.equal(await alert.getAttribute('open'),null);return {expanded:true,thresholdPreserved:true,thresholdChangePersisted:true,independentFixture:true};
 });
 results.push({tag,name:'pageerrors',status:errors.length?'fail':'pass',errors});flush();await context.close();
 }}finally{await browser.close();flush()}
