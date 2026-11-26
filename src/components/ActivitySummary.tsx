@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Activity, ActivityRecord, AcademicTerm, SchoolData, Student, Turma } from "@/types";
-import { AlertTriangle, ArrowRightLeft, CalendarDays, CheckCircle, Download, MoreHorizontal, Plus, Pencil, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, CalendarDays, CheckCircle, Download, GraduationCap, MoreHorizontal, Plus, Pencil, Trash2, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import {
@@ -205,88 +205,85 @@ export function ActivitySummary({
   };
 
   return (
-    <section className="gradebook-search-panel overflow-clip rounded-table border border-border bg-card">
+    <section className="gradebook-search-panel activity-workspace overflow-clip rounded-table border border-border bg-card">
       <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-2.5 py-1.5">
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold">Atividade</h3>
+          <h3 className="text-sm font-semibold text-brand">Atividade</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">{getTermLabel(term)} · {activities.length} atividade(s) · nota máxima {formatPoints(activityMaximum)} pontos</p>
         </div>
         <button
           onClick={exportActivitiesExcel}
           disabled={students.length === 0}
-          className="flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-button border border-input bg-card px-2.5 py-1.5 text-xs font-semibold text-action transition hover:bg-surface-active disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8"
         >
           <Download size={14} /> Exportar Excel
         </button>
       </div>
 
-      <form onSubmit={handleAddActivity} className="grid gap-2 border-b border-border bg-background p-2 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-end xl:grid-cols-[minmax(10rem,1fr)_auto_minmax(0,2fr)]">
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-semibold text-muted-foreground">Nome da atividade</span>
+      <form onSubmit={handleAddActivity} aria-label="Cadastrar atividade" className="activity-form border-b border-border bg-card p-2.5">
+        <label className="activity-name flex min-w-0 flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Nome da atividade</span>
           <input
             type="text"
             required
             placeholder="Ex.: Prova 1, Lista 2..."
             value={activityName}
             onChange={(event) => setActivityName(event.currentTarget.value)}
-            className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+            className="registration-field min-w-0 w-full"
           />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-muted-foreground">Data</span>
+        <label className="activity-date flex min-w-0 flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Data</span>
           <input
             type="date"
             required
             value={activityDate}
             onChange={(event) => setActivityDate(event.currentTarget.value)}
-            className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+            className="registration-field min-w-0 w-full"
           />
         </label>
-        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 sm:justify-between xl:col-span-1">
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-muted-foreground">Prazo</span>
+        <div className="activity-deadline contents">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground">Prazo</span>
               <select
                 value={deadlineMode}
                 onChange={(event) => setDeadlineMode(event.currentTarget.value as DeadlineMode)}
-                className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/25"
+                className="registration-field min-w-0 w-full"
               >
                 <option value="none">Sem prazo</option>
                 <option value="date">Data específica</option>
                 <option value="days">Dias após a atividade</option>
               </select>
             </label>
-            {deadlineMode === "date" && <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-muted-foreground">Data limite</span>
-              <input type="date" min={activityDate} required value={deadlineDate} onChange={(event) => setDeadlineDate(event.currentTarget.value)} className="min-h-10 rounded-md border border-input bg-card px-3 py-2 text-sm" />
+            {deadlineMode === "date" && <label className="activity-extra flex min-w-0 flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground">Data limite</span>
+              <input type="date" min={activityDate} required value={deadlineDate} onChange={(event) => setDeadlineDate(event.currentTarget.value)} className="registration-field min-w-0 w-full" />
             </label>}
-            {deadlineMode === "days" && <label className="flex items-center gap-2 pb-2 text-sm">
+            {deadlineMode === "days" && <label className="activity-extra flex min-w-0 flex-wrap items-center gap-2 text-xs">
               <input type="number" min={1} value={deadlineDays} onChange={(event) => setDeadlineDays(Math.max(1, Number(event.currentTarget.value) || 1))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm" />
               dia(s) após a data da atividade
             </label>}
-            {deadlineMode !== "none" && computeDeadline() && <span className="pb-2 text-xs text-muted-foreground">Vence em {formatDate(computeDeadline()!)}</span>}
-          </div>
-          <button type="submit" disabled={!activityName.trim() || (deadlineMode === "date" && !deadlineDate)} className="flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45" style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+            {deadlineMode !== "none" && computeDeadline() && <span className="activity-preview text-xs text-muted-foreground" aria-live="polite">Vence em {formatDate(computeDeadline()!)}</span>}
+        </div>
+          <button type="submit" disabled={!activityName.trim() || (deadlineMode === "date" && !deadlineDate)} className="activity-submit registration-action disabled:cursor-not-allowed disabled:opacity-45">
             <Plus size={15} /> Adicionar atividade
           </button>
-        </div>
       </form>
 
-      {alerts.length > 0 && <details className="border-b border-warning-border bg-warning-light/70">
+      {alerts.length > 0 && <details className="activity-alerts border-b border-warning-border bg-warning-light/50">
         <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-warning-foreground">
           <AlertTriangle size={15} /> {alerts.length} alerta(s) de aproveitamento
           <span className="ml-auto text-xs font-normal">Limite atual: {activityThreshold}%</span>
         </summary>
-        <div className="flex flex-wrap items-end gap-4 border-t border-warning-border bg-card/70 px-4 py-3">
+        <div className="flex flex-wrap items-start gap-3 border-t border-warning-border bg-card px-3 py-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             Alertar abaixo de
             <input type="number" min={0} max={100} value={activityThreshold} onChange={(event) => setActivityThreshold(Math.max(0, Math.min(100, Number(event.currentTarget.value) || 0)))} className="w-20 rounded-md border border-input bg-card px-2 py-1.5 text-sm text-foreground" />
             %
           </label>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            {alerts.map(({ student, summary }) => <span key={student.id} className="font-medium text-warning-foreground">{student.name} · {formatPoints(summary!.weightedPercentage)}%</span>)}
-          </div>
+          <div className="max-h-40 min-w-0 flex-1 overflow-auto text-xs text-muted-foreground"><div className="flex flex-wrap gap-1.5">
+            {alerts.map(({ student, summary }) => <span key={student.id} className="rounded-cell bg-warning-light px-2 py-1 font-medium text-warning-foreground">{student.name} · {formatPoints(summary!.weightedPercentage)}%</span>)}
+          </div></div>
         </div>
       </details>}
 
@@ -295,9 +292,9 @@ export function ActivitySummary({
       </div>
 
       {students.length === 0 ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">Nenhum aluno encontrado. Confira a pesquisa ou cadastre alunos para esta turma.</div>
+        <div className="school-empty-state" role="status"><GraduationCap size={22} aria-hidden="true" /><p className="font-semibold text-foreground">Nenhum aluno encontrado.</p><p>Confira a pesquisa ou cadastre alunos para esta turma.</p></div>
       ) : activities.length === 0 ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">Ainda não há atividades neste trimestre. Cadastre a primeira acima.</div>
+        <div className="school-empty-state" role="status"><CalendarDays size={22} aria-hidden="true" /><p className="font-semibold text-foreground">Ainda não há atividades neste trimestre.</p><p>Cadastre a primeira acima.</p></div>
       ) : (
         <TooltipProvider delayDuration={180}>
         <div className="gradebook-table-scroll gradebook-activity-scroll" role="region" aria-label="Planilha de atividades" tabIndex={0}>

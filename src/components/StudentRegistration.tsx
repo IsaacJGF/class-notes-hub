@@ -29,6 +29,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
         searchInputRef.current?.focus();
@@ -99,7 +100,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
   };
 
   return (
-    <div className="space-y-4 p-2 sm:space-y-6 sm:p-4">
+    <div className="registration-workspace min-w-0 space-y-3 p-2 sm:p-3">
       {showCsvModal && (
         <CsvImportModal
           data={data}
@@ -116,43 +117,46 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
         onTransfer={transferStudent}
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-        <div className="section-card">
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="section-card registration-card min-w-0">
           <div className="section-card-header">
-            <span className="section-card-title flex items-center gap-2"><BookOpen size={15} />Cadastrar Turma</span>
+            <h2 className="section-card-title flex items-center gap-2"><BookOpen size={16} />Cadastrar Turma</h2>
           </div>
-          <div className="p-4">
-            <form onSubmit={handleAddTurma} className="flex gap-2">
+          <div className="p-3">
+            <form onSubmit={handleAddTurma} aria-label="Cadastrar turma" className="flex min-w-0 gap-2">
               <input
                 type="text"
-                className="min-w-0 flex-1 rounded-md border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="registration-field min-w-0 flex-1 aria-[invalid=true]:border-destructive"
+                aria-label="Nome da turma"
+                aria-invalid={Boolean(turmaError)}
+                aria-describedby={turmaError ? "registration-turma-error" : undefined}
                 placeholder="Nome da turma (ex: 3A, Turma B...)"
                 value={newTurmaName}
                 onChange={(event) => { setNewTurmaName(event.target.value); setTurmaError(""); }}
               />
               <button
                 type="submit"
-                className="flex shrink-0 items-center gap-1.5 rounded-button px-3 py-2 text-sm font-semibold transition-colors hover:opacity-90"
-                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+                className="registration-action shrink-0"
               >
                 <UserPlus size={14} />Adicionar
               </button>
             </form>
-            {turmaError && <p className="mt-1.5 text-xs text-destructive">{turmaError}</p>}
+            {turmaError && <p id="registration-turma-error" role="alert" className="mt-2 flex items-center gap-1.5 rounded-cell bg-status-low-grade-bg px-2 py-1.5 text-xs text-status-low-grade">{turmaError}</p>}
             {data.turmas.length > 0 && (
-              <div className="mt-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Turmas cadastradas</p>
+              <div className="mt-2.5">
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Turmas cadastradas</p>
                 <div className="flex flex-wrap gap-2">
                   {data.turmas.map((turma) => (
-                    <div key={turma.id} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium" style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}>
+                    <div key={turma.id} className="flex min-w-0 items-center gap-1 rounded-button border border-border bg-surface-table py-0.5 pl-2 text-xs font-medium text-brand [overflow-wrap:anywhere]">
                       {turma.name}
                       <button
                         onClick={() => removeTurma(turma.id)}
-                        className="ml-0.5 rounded-full p-0.5 transition-opacity hover:opacity-70"
+                        type="button"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-button text-muted-foreground transition-colors hover:bg-status-low-grade-bg hover:text-status-low-grade"
                         title="Remover turma"
                         aria-label={`Remover turma ${turma.name}`}
                       >
-                        <Trash2 size={11} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   ))}
@@ -162,21 +166,23 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
           </div>
         </div>
 
-        <div className="section-card">
+        <div className="section-card registration-card min-w-0">
           <div className="section-card-header">
-            <span className="section-card-title flex items-center gap-2"><GraduationCap size={15} />Cadastrar Aluno</span>
+            <h2 className="section-card-title flex items-center gap-2"><GraduationCap size={16} />Cadastrar Aluno</h2>
           </div>
-          <div className="p-4">
-            <form onSubmit={handleAddStudent} className="flex flex-col gap-2 sm:flex-row">
+          <div className="p-3">
+            <form onSubmit={handleAddStudent} aria-label="Cadastrar aluno" className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(96px,auto)_auto]">
               <input
                 type="text"
-                className="min-h-[40px] flex-1 rounded-md border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="registration-field min-w-0"
+                aria-label="Nome do aluno"
                 placeholder="Nome do aluno"
                 value={studentName}
                 onChange={(event) => setStudentName(event.target.value)}
               />
               <select
-                className="min-h-[40px] rounded-md border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="registration-field min-w-0 max-w-full"
+                aria-label="Turma do aluno"
                 value={selectedTurmaId}
                 onChange={(event) => setSelectedTurmaId(event.target.value)}
               >
@@ -186,8 +192,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
               <button
                 type="submit"
                 disabled={!studentName.trim() || !selectedTurmaId}
-                className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-button px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-40 touch-manipulation"
-                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+                className="registration-action disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
               >
                 <UserPlus size={14} />Adicionar
               </button>
@@ -197,11 +202,11 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
         </div>
       </div>
 
-      <div className="section-card overflow-hidden">
-        <div className="section-card-header flex flex-col gap-3 xl:flex-row xl:items-center">
-          <span className="section-card-title shrink-0">Alunos Cadastrados ({visibleStudentCount})</span>
-          <div className="flex flex-wrap items-center gap-2 xl:ml-auto">
-            <label className="flex min-h-9 min-w-[200px] flex-1 items-center gap-2 rounded-md border border-input bg-card px-3 py-1.5 focus-within:ring-2 focus-within:ring-ring/40 sm:flex-none">
+      <div className="section-card registration-card min-w-0 overflow-hidden">
+        <div className="section-card-header registration-list-header flex flex-col gap-2 lg:flex-row lg:items-center">
+          <h2 className="section-card-title shrink-0">Alunos Cadastrados ({visibleStudentCount})</h2>
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto">
+            <label className="flex min-h-11 min-w-0 flex-1 basis-full items-center gap-2 rounded-md border border-input bg-card px-3 py-1.5 focus-within:ring-2 focus-within:ring-ring/40 sm:min-h-9 sm:basis-auto">
               <Search size={14} className="shrink-0 text-muted-foreground" />
               <input
                 ref={searchInputRef}
@@ -214,7 +219,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
               />
             </label>
             <select
-              className="min-h-9 rounded-md border border-input bg-card px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              className="registration-field min-w-0 max-w-full flex-1 text-xs sm:flex-none"
               value={filterTurma}
               onChange={(event) => setFilterTurma(event.target.value)}
               aria-label="Filtrar alunos por turma"
@@ -224,7 +229,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
             </select>
             <button
               onClick={() => setStudentSortOrder((current) => current === "asc" ? "desc" : "asc")}
-              className="min-h-9 rounded-button border border-input bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+              className="min-h-11 rounded-button border border-input bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted sm:min-h-9"
               title="Alternar ordem alfabética dos alunos"
               aria-label={studentSortOrder === "asc" ? "Ordenação A a Z; mudar para Z a A" : "Ordenação Z a A; mudar para A a Z"}
             >
@@ -232,8 +237,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
             </button>
             <button
               onClick={() => setShowCsvModal(true)}
-              className="flex min-h-9 items-center gap-1.5 rounded-button border px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
-              style={{ borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))", backgroundColor: "hsl(var(--primary) / 0.08)" }}
+              className="flex min-h-11 items-center gap-1.5 rounded-button border border-input bg-card px-2.5 py-1.5 text-xs font-semibold text-action hover:bg-surface-active sm:min-h-9"
             >
               <Upload size={12} />Importar CSV
             </button>
@@ -241,11 +245,13 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
         </div>
         <div className="overflow-x-auto">
           {visibleStudentCount === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              {searchQuery || filterTurma !== "all" ? "Nenhum aluno encontrado com esses filtros." : "Nenhum aluno cadastrado."}
+            <div className="school-empty-state" role="status">
+              <GraduationCap size={22} aria-hidden="true" />
+              <p className="font-semibold text-foreground">{searchQuery || filterTurma !== "all" ? "Nenhum aluno encontrado com esses filtros." : "Nenhum aluno cadastrado."}</p>
+              <p>{searchQuery || filterTurma !== "all" ? "Altere a pesquisa ou a turma selecionada." : "Use o formulário acima para cadastrar o primeiro aluno."}</p>
             </div>
           ) : (
-            <table className="school-table min-w-full">
+            <table className="school-table registration-table min-w-full">
               <thead>
                 <tr><th>#</th><th>Nome do aluno</th><th>Turma</th><th>Cadastrado em</th></tr>
               </thead>
@@ -254,8 +260,8 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
                   let rowNumber = 0;
                   return studentGroups.map((group) => (
                     <Fragment key={group.turma}>
-                      <tr className="bg-muted/60">
-                        <td colSpan={4} className="py-2 text-xs font-bold uppercase tracking-wide text-primary">
+                      <tr className="registration-group">
+                        <td colSpan={4} className="text-xs font-semibold text-brand">
                           {group.turma}<span className="ml-2 font-normal normal-case text-muted-foreground">{group.students.length} aluno(s)</span>
                         </td>
                       </tr>
@@ -297,7 +303,7 @@ export function StudentRegistration({ data, addStudent, removeStudent, transferS
                               </div>
                             </td>
                             <td>
-                              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--primary))" }}>
+                              <span className="inline-block rounded-cell bg-surface-table px-2 py-0.5 text-xs font-medium text-brand">
                                 {student.turma}
                               </span>
                             </td>
